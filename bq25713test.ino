@@ -5,43 +5,43 @@
 //#include<ESP8266mDNS.h>
 #define epromsize 200     // EEPROM 字节分配
 #define BQ25713_ADDR 0x6b //芯片IIC地址BQ25713是6b，25713b是6a
-#define CHG_OK_PIN 4//D2     // BQ25713 charge_OK 输出
-#define MB_LED_PIN 14//D5     //电脑开机状态LED,接到电脑上
-#define MB_START_PIN 12//D6   //电脑开机引脚,接到电脑上
-#define RESET_PIN 5//D1      //重设网络参数
-#define BOX_SW_PIN 15//D8     //电脑开机引脚,接到机箱开关
-#define BOX_LED_PIN 13//D7    //电脑开机状态LED,接到机箱led上
+#define CHG_OK_PIN 4      // D2     // BQ25713 charge_OK 输出
+#define MB_LED_PIN 14     // D5     //电脑开机状态LED,接到电脑上
+#define MB_START_PIN 12   // D6   //电脑开机引脚,接到电脑上
+#define RESET_PIN 5       // D1      //重设网络参数
+#define BOX_SW_PIN 15     // D8     //电脑开机引脚,接到机箱开关
+#define BOX_LED_PIN 13    // D7    //电脑开机状态LED,接到机箱led上
 //#define RESET_BQ_PIN D7            //重设芯片
-#define SCL 0//d3
-#define SDA  2//d4
-#define ChargerStatus_ADDR 0x20    // R
-#define IIN_DPM_ADDR 0X24          // R 实际输入电流限制值 ICO以后要重设输入电流限制
-#define ADC_ADDR 0x26              // R 0x26-0x2D
-#define ManufacturerID_ADDR 0x2E   //==40H
-#define DeviceID_ADDR 0x2F         //==I2C: 88h (BQ25713); 8Ah (BQ25713B)
-#define ADCENS_ADDR 0x3A           // ADC功能设置，启用还是关闭测量
-#define MinSysVolt_ADDR 0x0C       //默认不改9.216v for 3s 1024-16128mV /256mV
-#define ChargerOption0_ADDR 0x00   //
-#define ChargerOption1_ADDR 0x30   //
-#define ChargerOption2_ADDR 0x32   //
-#define ChargerOption3_ADDR 0x34   //
-#define ChargeCurrent_ADDR 0x02    // 64-8128mA /64mA
-#define MaxChargeVoltage_ADDR 0x04 // 范围1024-19200mV /8mV
-#define IIN_LIM_ADDR 0x0E          // 01111111=0x7F 输入电流限制 范围 50-6400mA /50mA offset 50mA
-#define InputVoltage_ADDR 0x0A     //输入电压设置3200-19520，低于这个值就引发vidpm
-#define OTGVoltage_ADDR 0x06       // offset 1.28v 1280mV
-#define OTGCurrent_ADDR 0x08
+#define SCL 0                    // d3
+#define SDA 2                    // d4
+#define ChargerStatus_ADDR 0x20  // R
+#define IIN_DPM_ADDR 0X24        // R 实际输入电流限制值 ICO以后要重设输入电流限制
+#define ADC_ADDR 0x26            // R 0x26-0x2D
+#define ManufacturerID_ADDR 0x2E //==40H
+#define DeviceID_ADDR 0x2F       //==I2C: 88h (BQ25713); 8Ah (BQ25713B)
+#define ChargerOption0_ADDR 0x00 //
+#define ChargerOption1_ADDR 0x30 //
+#define ChargerOption2_ADDR 0x32 //
+#define ChargerOption3_ADDR 0x34 //
 #define ProchotOption0_ADDR 0X36
 #define ProchotOption1_ADDR 0X38
+#define ADCENS_ADDR 0x3A           // ADC功能设置，启用还是关闭测量
+#define ChargeCurrent_ADDR 0x02    // 64-8128mA /64mA
+#define MaxChargeVoltage_ADDR 0x04 // 范围1024-19200mV /8mV
+#define OTGVoltage_ADDR 0x06       // offset 1.28v 1280mV
+#define OTGCurrent_ADDR 0x08
+#define InputVoltage_ADDR 0x0A //输入电压设置3200-19520，低于这个值就引发vidpm
+#define MinSysVolt_ADDR 0x0C   //默认不改9.216v for 3s 1024-16128mV /256mV
+#define IIN_LIM_ADDR 0x0E      // 01111111=0x7F 输入电流限制 范围 50-6400mA /50mA offset 50mA
 
-byte chargeopt01, chargeopt00, chargeopt31, chargeopt30, chargeopt32, chargeopt33, chargeopt34, chargeopt35;
+byte chargeopt01, chargeopt00, chargeopt31, chargeopt30, chargeopt32, chargeopt33, chargeopt34, chargeopt35, prohotopt36, prohotopt37, prohotopt38, prohotopt39;
 String ssid = "", password = "";
 char mqtt_server[50] = "";
 char ups_IP[16] = "";
 char mqtt_user[30] = "";
 char mqtt_pwd[30] = "";
 long now, j;
-int i = 0,chargeI;
+int i = 0, chargeI;
 byte getADC[8], MSB, LSB, BatStatus;
 boolean ACstat, bqflag;
 struct
@@ -58,13 +58,13 @@ struct
 } ADC;
 struct
 {
-  int MinSysVolt; // 8位
-  int MaxChargeVoltage;
   int ChargeCurrent;
-  int MinInputV; //输入Vdpm
-  int IIn_Limt;  // 8位
-  int IIN_DPM;   // 8位只读
-  int VBatOff;   // 16位
+  int MaxChargeVoltage;
+  int MinSysVolt; // 8位
+  int MinInputV;  //输入Vdpm
+  int IIn_Limt;   // 8位
+  int IIN_DPM;    // 8位只读
+  int VBatOff;    // 16位
 } SET_PARA;
 WiFiClient ups;
 PubSubClient client(ups);
@@ -78,7 +78,7 @@ void setup()
   pinMode(BOX_LED_PIN, OUTPUT);
   digitalWrite(MB_START_PIN, 1); //控制电脑启动的引脚 上电拉高
   Serial.begin(57600);           //初始化串口配置
-  Wire.begin(SCL,SDA);//D3, D4);            // 初始化IIC 通讯 并指定引脚做通讯
+  Wire.begin(SCL, SDA);          // D3, D4);            // 初始化IIC 通讯 并指定引脚做通讯
   delay(100);
   read_rom_bq_conf();
   if (!digitalRead(RESET_PIN)) // D1=0重新配置网络参数
@@ -111,9 +111,8 @@ void loop()
     read_set_para();
     parapublish();
     ADCstatus();
-    if(chargeI>100)
-    SetChargeCurrent(SET_PARA.ChargeCurrent);
-    // delay(100);
+    if (chargeI > 100)
+      SetChargeCurrent(SET_PARA.ChargeCurrent);
     bqflag = mreadBQ25(ADC_ADDR, getADC, 8); // adc状态监控
     if (bqflag)
     {
@@ -165,7 +164,7 @@ boolean writeBQ25(byte regAddress, byte dataVal0, byte dataVal1)
 }
 void ADCcalc()
 {
-  // ADC.PSYS = getADC[0] * 0.4;
+  // ADC.PSYS = getADC[0] * 0.4;//psys= Vsys(mV)/Rsys(R) * 10^3
   if (getADC[1])
     ADC.VBUS = getADC[1] * 64 + 3200;
   else
@@ -330,14 +329,14 @@ void ADCstatus()
   bqACK = mreadBQ25(ADCENS_ADDR, dataVal, 2);
   if (bqACK)
   {
-    if (dataVal[1] & 0B10000000)
+    if ((dataVal[1] & 0B10000000)&&(dataVal[0] == 0x7f))
     {
       Serial.println("ADC_CONV : Continuous update");
     }
     else
     {
       Serial.println("ADC_CONV : One-shot update");
-      writeBQ25(0x3a, 0x7f, 0xa0); //打开测量系统功能，并启动测量 连续转换
+      writeBQ25(ADCENS_ADDR, 0x7f, 0xa0); //打开测量系统功能，并启动测量 连续转换
     }
   }
 }
@@ -443,7 +442,7 @@ void write_rom_net_conf(int i) // i 为rom 开始地址
   }
   EEPROM.write(i, '\0');
   i++;
-  Serial.print("\nplease first input mqtt server:\n ");
+  Serial.print("\nplease input mqtt server:\n ");
   while (!Serial.available())
   {
   }
@@ -455,7 +454,7 @@ void write_rom_net_conf(int i) // i 为rom 开始地址
   }
   EEPROM.write(i, '\0');
   i++;
-  Serial.print("\nplease first input mqtt user:\n ");
+  Serial.print("\nplease input mqtt user:\n ");
   while (!Serial.available())
   {
   }
@@ -467,7 +466,7 @@ void write_rom_net_conf(int i) // i 为rom 开始地址
   }
   EEPROM.write(i, '\0');
   i++;
-  Serial.print("\nplease first input mqtt password:\n ");
+  Serial.print("\nplease input mqtt password:\n ");
   while (!Serial.available())
   {
   }
@@ -498,7 +497,7 @@ void read_rom_net_conf(int i)
     password = password + ch;
     i++;
   } while (ch != '\0');
-  if (password == "NULL")
+  if (password == "NULL"||password=="null")
     password = "";
   j = 0;
   do
@@ -585,12 +584,17 @@ void InitBQ25()
 {
   chargeopt00 = 0x0e; // 0000 1110=0e
   chargeopt01 = 0x87; // 1000 0111=87
-  chargeopt30 = 0x01; // 0000 0001=1
+  chargeopt30 = 0x01; // 0000 0001=1//15
   chargeopt31 = 0x93; // 1001 0011=93
   chargeopt32 = 0x3f; // 0011 1111=3f
   chargeopt33 = 0x02; // 0000 0010=2
-  chargeopt34 = 0x11; // 0001 0001=11
+  chargeopt34 = 0x31; // 0011 0001=31//31
   chargeopt35 = 0x08; // 0000 1000=8
+  prohotopt36 = 0x6a;
+  prohotopt37 = 0x4a;
+  prohotopt38 = 0;
+  prohotopt39 = 0x81;
+
   writeBQ25(ChargerOption0_ADDR, chargeopt00, chargeopt01);
   delay(50);
   writeBQ25(ChargerOption1_ADDR, chargeopt30, chargeopt31);
@@ -598,6 +602,10 @@ void InitBQ25()
   writeBQ25(ChargerOption2_ADDR, chargeopt32, chargeopt33);
   delay(50);
   writeBQ25(ChargerOption3_ADDR, chargeopt34, chargeopt35); //设置充电选项3 35 0000 1000 0X08 34 0001 0000 0X16  35[4] 1开启OTG,35[3] 1 ICO开启 34[6] 1 vap 开启
+  delay(50);
+  writeBQ25(ProchotOption0_ADDR, prohotopt36, prohotopt37);
+  delay(50);
+  writeBQ25(ProchotOption1_ADDR, prohotopt38, prohotopt39);
   delay(50);
   writeBQ25(IIN_LIM_ADDR, 0, 0x41); //输入电流设置 默认3.2A
   delay(50);
@@ -655,7 +663,7 @@ void callback(char *intopic, byte *payload, unsigned int length)
     EEPROM.write(4, c % 255);
     EEPROM.write(5, c / 255);
     EEPROM.end();
-    chargeI=c;
+    chargeI = c;
     SetChargeCurrent(c);
   }
   if (!strcmp(intopic, "ups/set/MaxChargeV")) //最大充电电压
@@ -713,7 +721,7 @@ void callback(char *intopic, byte *payload, unsigned int length)
       if (i < length - 1)
         c *= 10;
     }
-    setBytes(c, 64, 16320, 3200, 64);
+    setBytes(c, 3200, 19584, 3200, 64);
     writeBQ25(InputVoltage_ADDR, LSB, MSB); //输入电压设置
     EEPROM.begin(epromsize);
     EEPROM.write(6, LSB);
@@ -739,18 +747,32 @@ void callback(char *intopic, byte *payload, unsigned int length)
 void read_set_para()
 {
   byte dataVal[2];
-  mreadBQ25(MinSysVolt_ADDR, dataVal, 2);
-  SET_PARA.MinSysVolt = dataVal[1] * 256;
-  mreadBQ25(MaxChargeVoltage_ADDR, dataVal, 2);
-  SET_PARA.MaxChargeVoltage = dataVal[1] * 256 + (dataVal[0] >> 3) * 8;
-  mreadBQ25(ChargeCurrent_ADDR, dataVal, 2);
-  SET_PARA.ChargeCurrent = dataVal[1] * 256 + (dataVal[0] >> 6) * 64;
-  mreadBQ25(InputVoltage_ADDR, dataVal, 2);
-  SET_PARA.MinInputV = dataVal[1] * 256 + (dataVal[0] >> 6) * 64 + 3200;
-  mreadBQ25(IIN_LIM_ADDR, dataVal, 2);
-  SET_PARA.IIn_Limt = dataVal[1] * 50;
-  mreadBQ25(IIN_DPM_ADDR, dataVal, 2); //只读,数据为实际输入电流设置
-  SET_PARA.IIN_DPM = dataVal[1] * 50 + 50;
+  dataVal[0] = 0;
+  dataVal[1] = 0;
+   if (mreadBQ25(ChargeCurrent_ADDR, dataVal, 2))
+  {
+    SET_PARA.ChargeCurrent = dataVal[1] <<8 + dataVal[0];
+  }
+  if (mreadBQ25(MaxChargeVoltage_ADDR, dataVal, 2))
+  {
+    SET_PARA.MaxChargeVoltage = dataVal[1] <<8 + dataVal[0];
+  }
+   if (mreadBQ25(MinSysVolt_ADDR, dataVal, 2))
+  {
+    SET_PARA.MinSysVolt = dataVal[1] << 8;
+     }
+  if (mreadBQ25(InputVoltage_ADDR, dataVal, 2))
+  {
+    SET_PARA.MinInputV = dataVal[1] << 8 + dataVal[0]  + 3200;
+  }
+  if (mreadBQ25(IIN_LIM_ADDR, dataVal, 2))
+  {
+    SET_PARA.IIn_Limt = dataVal[1] * 50+50;
+  }
+  if (mreadBQ25(IIN_DPM_ADDR, dataVal, 2))
+  { //只读,数据为实际输入电流设置
+    SET_PARA.IIN_DPM = dataVal[1] * 50 + 50;
+  }
 }
 void parapublish()
 {
