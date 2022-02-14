@@ -41,7 +41,7 @@ char ups_IP[16] = "";
 char mqtt_user[30] = "";
 char mqtt_pwd[30] = "";
 long now, j;
-int i = 0, chargeI;
+int i = 0;
 byte getADC[8], MSB, LSB, BatStatus;
 boolean ACstat, bqflag;
 struct
@@ -56,7 +56,7 @@ struct
   int VBAT;
   int VSYS;
 } ADC;
-struct
+struct BqPara
 {
   int ChargeCurrent;
   int MaxChargeVoltage;
@@ -65,7 +65,8 @@ struct
   int IIn_Limt;   // 8位
   int IIN_DPM;    // 8位只读
   int VBatOff;    // 16位
-} SET_PARA;
+};                // SET_PARA;
+BqPara SET_PARA, READ_PARA;
 WiFiClient ups;
 PubSubClient client(ups);
 void setup()
@@ -110,8 +111,10 @@ void loop()
     ChargeStatus();
     read_set_para();
     parapublish();
+    if (abs(SET_PARA.IIN_DPM - READ_PARA.IIn_Limt) < 100) //重新设置输入电流限制
+      SetInLimtCurrent(SET_PARA.IIn_Limt);
     ADCstatus();
-    if (chargeI > 100)
+    if (SET_PARA.ChargeCurrent > 100)
       SetChargeCurrent(SET_PARA.ChargeCurrent);
     bqflag = mreadBQ25(ADC_ADDR, getADC, 8); // adc状态监控
     if (bqflag)
@@ -161,6 +164,31 @@ boolean writeBQ25(byte regAddress, byte dataVal0, byte dataVal1)
   {
     return false;
   }
+}
+void SetChargeCurrent(int c)
+{
+  setBytes(c, 0, 8128, 0, 64);
+  writeBQ25(ChargeCurrent_ADDR, LSB, MSB); //充电电流
+}
+void SetMaxChargeVoltage(int c)
+{
+  setBytes(c, 1024, 19200, 0, 8);
+  writeBQ25(MaxChargeVoltage_ADDR, LSB, MSB);
+}
+void SetMinSysVoltage(int c)
+{
+  c /= 256;
+  writeBQ25(MinSysVolt_ADDR, 0, c);
+}
+void SetInLimtCurrent(int c)
+{
+  c /= 50;
+  writeBQ25(IIN_LIM_ADDR, 0, c);
+}
+void SetInVoltage(int c)
+{
+  setBytes(c, 3200, 19584, 3200, 64);
+  writeBQ25(InputVoltage_ADDR, LSB, MSB);
 }
 void ADCcalc()
 {
@@ -329,7 +357,7 @@ void ADCstatus()
   bqACK = mreadBQ25(ADCENS_ADDR, dataVal, 2);
   if (bqACK)
   {
-    if ((dataVal[1] & 0B10000000)&&(dataVal[0] == 0x7f))
+    if ((dataVal[1] & 0B10000000) && (dataVal[0] == 0x7f))
     {
       Serial.println("ADC_CONV : Continuous update");
     }
@@ -385,34 +413,32 @@ void reconnectmqtt()
 }
 void read_rom_bq_conf()
 {
+  int c;
   EEPROM.begin(epromsize);
-  SET_PARA.VBatOff = EEPROM.read(0) + EEPROM.read(1) * 255; // S
+  c = EEPROM.read(1) + EEPROM.read(2) * 256;
+  Serial.print("charge I:");
+  Serial.println(c);
+  SetChargeCurrent(c); //充电电流
+  c = EEPROM.read(3) + EEPROM.read(4) * 256;
+  Serial.print("max chagre V:");
+  Serial.println(c);
+  SetMaxChargeVoltage(c); //最大充电电压
+  c = EEPROM.read(5) + EEPROM.read(6) * 256;
+  Serial.print("min sys V:");
+  Serial.println(c);
+  SetMinSysVoltage(c); //最小系统电压3s对应9v
+  c = EEPROM.read(7) + EEPROM.read(8) * 256;
+  Serial.print("input VIDPM:");
+  Serial.println(c);
+  SetInVoltage(c); //最小输入电压，触发VIDPM的电压值16=4.096v
+  c = EEPROM.read(9) + EEPROM.read(10) * 256;
+  SET_PARA.IIn_Limt = c;
+  Serial.print("input I:");
+  Serial.println(c);
+  SetInLimtCurrent(c);                                        //输入电流设置 默认3.2A
+  SET_PARA.VBatOff = EEPROM.read(11) + EEPROM.read(12) * 255; // 电池关机电压
   Serial.print("bat poweroff:");
   Serial.println(SET_PARA.VBatOff);
-  LSB = EEPROM.read(2);
-  MSB = EEPROM.read(3);
-  Serial.print("max chagre V:");
-  Serial.println(LSB + MSB * 256);
-  writeBQ25(MaxChargeVoltage_ADDR, LSB, MSB); //最大充电电压
-  LSB = EEPROM.read(4);
-  MSB = EEPROM.read(5);
-  Serial.print("charge I:");
-  Serial.println(LSB + MSB * 256);
-  writeBQ25(ChargeCurrent_ADDR, LSB, MSB); //充电电流
-  LSB = EEPROM.read(6);
-  MSB = EEPROM.read(7);
-  Serial.print("input VIDPM:");
-  Serial.println(LSB + MSB * 256);
-  writeBQ25(InputVoltage_ADDR, LSB, MSB); //最小输入电压，触发VIDPM的电压值16=4.096v
-  MSB = EEPROM.read(8);
-  SET_PARA.IIn_Limt = MSB;
-  Serial.print("input I:");
-  Serial.println(MSB);
-  writeBQ25(IIN_LIM_ADDR, 0, MSB); //输入电流设置 默认3.2A
-  MSB = EEPROM.read(9);
-  Serial.print("min sys V:");
-  Serial.println(MSB);
-  writeBQ25(MinSysVolt_ADDR, 0, MSB); //最小系统电压3s对应9v
   EEPROM.end();
 }
 void write_rom_net_conf(int i) // i 为rom 开始地址
@@ -497,7 +523,7 @@ void read_rom_net_conf(int i)
     password = password + ch;
     i++;
   } while (ch != '\0');
-  if (password == "NULL"||password=="null")
+  if (password == "NULL" || password == "null")
     password = "";
   j = 0;
   do
@@ -575,11 +601,6 @@ void nascontrol()
     }
   }
 }
-void SetChargeCurrent(int dataval)
-{
-  setBytes(dataval, 0, 8128, 0, 64);
-  writeBQ25(ChargeCurrent_ADDR, LSB, MSB); //充电电流
-}
 void InitBQ25()
 {
   chargeopt00 = 0x0e; // 0000 1110=0e
@@ -607,18 +628,15 @@ void InitBQ25()
   delay(50);
   writeBQ25(ProchotOption1_ADDR, prohotopt38, prohotopt39);
   delay(50);
-  writeBQ25(IIN_LIM_ADDR, 0, 0x41); //输入电流设置 默认3.2A
+  SetInLimtCurrent(3500); //输入电流设置 默认3.2A
   delay(50);
-  setBytes(10500, 1024, 16128, 0, 256);
-  writeBQ25(MinSysVolt_ADDR, LSB, MSB); //最小系统电压3s对应9v
+  SetMinSysVoltage(11000); //最小系统电压3s对应9v
   delay(100);
-  setBytes(12600, 1024, 19200, 0, 8);
-  writeBQ25(MaxChargeVoltage_ADDR, LSB, MSB); //最大充电电压
+  SetMaxChargeVoltage(12600); //最大充电电压
   delay(50);
-  setBytes(1500, 64, 8128, 0, 64);
-  writeBQ25(ChargeCurrent_ADDR, LSB, MSB); //充电电流
+  SetChargeCurrent(1500); //充电电流
   delay(50);
-  writeBQ25(InputVoltage_ADDR, 0, 16); //最小输入电压，触发VIDPM的电压值16=4.096v
+  SetInVoltage(11000); //最小输入电压，触发VIDPM的电压值16=4.096v
   delay(50);
   writeBQ25(ADCENS_ADDR, 0x7f, 0xa0); //打开ADC，并启动连续转换
   delay(50);
@@ -660,10 +678,10 @@ void callback(char *intopic, byte *payload, unsigned int length)
         c *= 10;
     }
     EEPROM.begin(epromsize);
-    EEPROM.write(4, c % 255);
-    EEPROM.write(5, c / 255);
+    EEPROM.write(1, c % 255);
+    EEPROM.write(2, c / 255);
     EEPROM.end();
-    chargeI = c;
+    SET_PARA.ChargeCurrent = c;
     SetChargeCurrent(c);
   }
   if (!strcmp(intopic, "ups/set/MaxChargeV")) //最大充电电压
@@ -676,11 +694,10 @@ void callback(char *intopic, byte *payload, unsigned int length)
         c *= 10;
     }
     EEPROM.begin(epromsize);
-    EEPROM.write(2, c % 255);
-    EEPROM.write(3, c / 255);
+    EEPROM.write(3, c % 255);
+    EEPROM.write(4, c / 255);
     EEPROM.end();
-    setBytes(c, 1024, 19200, 0, 8);
-    writeBQ25(MaxChargeVoltage_ADDR, LSB, MSB); //最大充电电压
+    SetMaxChargeVoltage(12600); //最大充电电压
   }
   if (!strcmp(intopic, "ups/set/MinSysV")) //最小系统电压3s对应9v
   {
@@ -691,10 +708,25 @@ void callback(char *intopic, byte *payload, unsigned int length)
       if (i < length - 1)
         c *= 10;
     }
-    c /= 256;
-    writeBQ25(MinSysVolt_ADDR, 0, c); //最小系统电压3s对应9v
+    SetMinSysVoltage(c); //最小系统电压3s对应9v
     EEPROM.begin(epromsize);
-    EEPROM.write(9, c);
+    EEPROM.write(5, c % 255);
+    EEPROM.write(6, c / 255);
+    EEPROM.end();
+  }
+  if (!strcmp(intopic, "ups/set/MinInV")) //输入电压设置offset 3200mV
+  {
+    int c = 0;
+    for (int i = 0; i < length; i++)
+    {
+      c += (int)(payload[i] - 48);
+      if (i < length - 1)
+        c *= 10;
+    }
+    SetInVoltage(11000); //输入电压设置
+    EEPROM.begin(epromsize);
+    EEPROM.write(7, c % 255);
+    EEPROM.write(8, c / 255);
     EEPROM.end();
   }
   if (!strcmp(intopic, "ups/set/MaxInI"))
@@ -706,27 +738,11 @@ void callback(char *intopic, byte *payload, unsigned int length)
       if (i < length - 1)
         c *= 10;
     }
-    c /= 50;
     EEPROM.begin(epromsize);
-    EEPROM.write(8, c);
+    EEPROM.write(9, c % 255);
+    EEPROM.write(10, c / 255);
     EEPROM.end();
-    writeBQ25(IIN_LIM_ADDR, 0, c); //输入电流设置  0f 0111 1111 0x7F 0e 00000 0X0 最大电流6.35A
-  }
-  if (!strcmp(intopic, "ups/set/MinInV")) //输入电压设置offset 3200mV
-  {
-    int c = 0;
-    for (int i = 0; i < length; i++)
-    {
-      c += (int)(payload[i] - 48);
-      if (i < length - 1)
-        c *= 10;
-    }
-    setBytes(c, 3200, 19584, 3200, 64);
-    writeBQ25(InputVoltage_ADDR, LSB, MSB); //输入电压设置
-    EEPROM.begin(epromsize);
-    EEPROM.write(6, LSB);
-    EEPROM.write(7, MSB);
-    EEPROM.end();
+    SetInLimtCurrent(c); //输入电流设置  0f 0111 1111 0x7F 0e 00000 0X0 最大电流6.35A
   }
   if (!strcmp(intopic, "ups/set/VBatOff")) //关机电池电压、ac不在线时
   {
@@ -739,8 +755,8 @@ void callback(char *intopic, byte *payload, unsigned int length)
     }
     SET_PARA.VBatOff = c;
     EEPROM.begin(epromsize);
-    EEPROM.write(0, c % 255);
-    EEPROM.write(1, c / 255);
+    EEPROM.write(11, c % 255);
+    EEPROM.write(12, c / 255);
     EEPROM.end();
   }
 }
@@ -749,63 +765,63 @@ void read_set_para()
   byte dataVal[2];
   dataVal[0] = 0;
   dataVal[1] = 0;
-   if (mreadBQ25(ChargeCurrent_ADDR, dataVal, 2))
+  if (mreadBQ25(ChargeCurrent_ADDR, dataVal, 2))
   {
-    SET_PARA.ChargeCurrent = dataVal[1] <<8 + dataVal[0];
+    READ_PARA.ChargeCurrent = dataVal[1] << 8 + dataVal[0];
   }
   if (mreadBQ25(MaxChargeVoltage_ADDR, dataVal, 2))
   {
-    SET_PARA.MaxChargeVoltage = dataVal[1] <<8 + dataVal[0];
+    READ_PARA.MaxChargeVoltage = dataVal[1] << 8 + dataVal[0];
   }
-   if (mreadBQ25(MinSysVolt_ADDR, dataVal, 2))
+  if (mreadBQ25(MinSysVolt_ADDR, dataVal, 2))
   {
-    SET_PARA.MinSysVolt = dataVal[1] << 8;
-     }
+    READ_PARA.MinSysVolt = dataVal[1] << 8;
+  }
   if (mreadBQ25(InputVoltage_ADDR, dataVal, 2))
   {
-    SET_PARA.MinInputV = dataVal[1] << 8 + dataVal[0]  + 3200;
+    READ_PARA.MinInputV = dataVal[1] << 8 + dataVal[0] + 3200;
   }
   if (mreadBQ25(IIN_LIM_ADDR, dataVal, 2))
   {
-    SET_PARA.IIn_Limt = dataVal[1] * 50+50;
+    READ_PARA.IIn_Limt = dataVal[1] * 50 + 50;
   }
   if (mreadBQ25(IIN_DPM_ADDR, dataVal, 2))
   { //只读,数据为实际输入电流设置
-    SET_PARA.IIN_DPM = dataVal[1] * 50 + 50;
+    READ_PARA.IIN_DPM = dataVal[1] * 50 + 50;
   }
 }
 void parapublish()
 {
   char temp[8] = "";
-  snprintf(temp, 6, "%d", SET_PARA.MinSysVolt);
+  snprintf(temp, 6, "%d", READ_PARA.MinSysVolt);
   client.publish("ups/para/MinSysV", temp);
   Serial.print("setting MinSysV is ");
-  Serial.println(SET_PARA.MinSysVolt);
+  Serial.println(READ_PARA.MinSysVolt);
 
-  snprintf(temp, 6, "%d", SET_PARA.MaxChargeVoltage);
+  snprintf(temp, 6, "%d", READ_PARA.MaxChargeVoltage);
   client.publish("ups/para/MaxChargeV", temp);
   Serial.print("setting MaxChargeVoltage is ");
-  Serial.println(SET_PARA.MaxChargeVoltage);
+  Serial.println(READ_PARA.MaxChargeVoltage);
 
-  snprintf(temp, 6, "%d", SET_PARA.ChargeCurrent);
+  snprintf(temp, 6, "%d", READ_PARA.ChargeCurrent);
   client.publish("ups/para/ChargeI", temp);
   Serial.print("setting ChargeCurrent is ");
-  Serial.println(SET_PARA.ChargeCurrent);
+  Serial.println(READ_PARA.ChargeCurrent);
 
-  snprintf(temp, 6, "%d", SET_PARA.MinInputV);
+  snprintf(temp, 6, "%d", READ_PARA.MinInputV);
   client.publish("ups/para/MinInV", temp);
   Serial.print("setting MinInputV is ");
-  Serial.println(SET_PARA.MinInputV);
+  Serial.println(READ_PARA.MinInputV);
 
-  snprintf(temp, 6, "%d", SET_PARA.IIn_Limt);
+  snprintf(temp, 6, "%d", READ_PARA.IIn_Limt);
   client.publish("ups/para/MaxInI", temp);
   Serial.print("setting IIn_Limt is ");
-  Serial.println(SET_PARA.IIn_Limt);
+  Serial.println(READ_PARA.IIn_Limt);
 
-  snprintf(temp, 6, "%d", SET_PARA.IIN_DPM);
+  snprintf(temp, 6, "%d", READ_PARA.IIN_DPM);
   client.publish("ups/para/VIDPM", temp);
   Serial.print("setting IIN_DPM is ");
-  Serial.println(SET_PARA.IIN_DPM);
+  Serial.println(READ_PARA.IIN_DPM);
 }
 void sectohms(int tsec)
 {
@@ -867,3 +883,4 @@ void sectohms(int tsec)
   Serial.print("uptime:");
   Serial.println(hms);
 }
+
