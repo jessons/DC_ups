@@ -3,15 +3,15 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 //#include<ESP8266mDNS.h>
-#define epromsize 200     // EEPROM 字节分配
-#define BQ25713_ADDR 0x6b //芯片IIC地址BQ25713是6b，25713b是6a
-#define CHG_OK_PIN 4      // D2     // BQ25713 charge_OK 输出
-#define MB_LED_PIN 14     // D5     //电脑开机状态LED,接到电脑上
-#define MB_START_PIN 12   // D6   //电脑开机引脚,接到电脑上
-#define RESET_PIN 5       // D1      //重设网络参数
-#define BOX_SW_PIN 15     // D8     //电脑开机引脚,接到机箱开关
-#define BOX_LED_PIN 13    // D7    //电脑开机状态LED,接到机箱led上
-//#define RESET_BQ_PIN D7            //重设芯片
+#define epromsize 200            // EEPROM 字节分配
+#define BQ25713_ADDR 0x6b        //芯片IIC地址BQ25713是6b，25713b是6a
+#define CHG_OK_PIN 4             // D2     // BQ25713 charge_OK 输出
+#define MB_LED_PIN 14            // D5     //电脑开机状态LED,接到电脑上
+#define MB_START_PIN 12          // D6   //电脑开机引脚,接到电脑上
+#define RESET_PIN 5              // D1      //重设网络参数
+#define BOX_SW_PIN 15            // D8     //电脑开机引脚,接到机箱开关
+#define BOX_LED_PIN 13           // D7    //电脑开机状态LED,接到机箱led上
+#define LED_PIN 16               // D0 板载LED
 #define SCL 0                    // d3
 #define SDA 2                    // d4
 #define ChargerStatus_ADDR 0x20  // R
@@ -77,6 +77,7 @@ void setup()
   pinMode(RESET_PIN, INPUT_PULLUP);
   pinMode(BOX_SW_PIN, INPUT_PULLUP);
   pinMode(BOX_LED_PIN, OUTPUT);
+  pinMode(LED_PIN, OUTPUT);
   digitalWrite(MB_START_PIN, 1); //控制电脑启动的引脚 上电拉高
   Serial.begin(57600);           //初始化串口配置
   Wire.begin(SCL, SDA);          // D3, D4);            // 初始化IIC 通讯 并指定引脚做通讯
@@ -91,22 +92,22 @@ void setup()
 }
 void loop()
 {
-  // digitalWrite(MB_START_PIN, digitalRead(BOX_SW_PIN));
-  if (!digitalRead(BOX_SW_PIN))
+  // digitalWrite(MB_START_PIN,!digitalRead(BOX_SW_PIN));//D8上电后为0，电脑开机动作是0，外部开关接D8和VCC
+  if (digitalRead(BOX_SW_PIN)) //外部开关触发开机
   {
     delay(50);
-    if (!digitalRead(BOX_SW_PIN))
+    if (digitalRead(BOX_SW_PIN))
     {
       digitalWrite(MB_START_PIN, LOW);
       delay(500);
       digitalWrite(MB_START_PIN, HIGH);
     }
   }
-  digitalWrite(BOX_LED_PIN, digitalRead(MB_LED_PIN));
   client.loop();             // callback()调用
   if (millis() - now > 2000) //每2s执行一次
   {
     j++;
+    digitalWrite(BOX_LED_PIN, digitalRead(MB_LED_PIN));
     if (WiFi.status() != WL_CONNECTED)
       reconnectwifi();
     if (!client.connected() && WiFi.status() == WL_CONNECTED)
@@ -120,7 +121,7 @@ void loop()
     sectohms(now / 1000);
     ChargeStatus();
     ReadSetPara();
-    parapublish();
+    ParaPublish();
     if (abs(READ_PARA.IIN_DPM - SET_PARA.IIn_Limt) > 100) //重新设置输入电流限制
       SetInLimtCurrent(SET_PARA.IIn_Limt);
     ADCstatus();
@@ -404,6 +405,11 @@ void reconnectmqtt()
 {
   Serial.print("\nConnecting MQTT server to [");
   Serial.print(mqtt_server);
+  Serial.print("] ");
+  Serial.print("use:[");
+  Serial.print(mqtt_user);
+  Serial.print(":");
+  Serial.print(mqtt_pwd);
   Serial.print("]\n");
   if (client.connect("ups-8266", mqtt_user, mqtt_pwd))
   {
@@ -450,6 +456,8 @@ void ReadRomBqConf()
   SET_PARA.VBatOff = EEPROM.read(11) + EEPROM.read(12) << 8; // 电池关机电压
   Serial.print("bat poweroff:");
   Serial.println(SET_PARA.VBatOff);
+  for (i = 1; i < 13; i++)
+    Serial.println(EEPROM.read(i));
   EEPROM.end();
 }
 void WriteRomNetConf(int i) // i 为rom 开始地址
@@ -688,8 +696,8 @@ void callback(char *intopic, byte *payload, unsigned int length)
         c *= 10;
     }
     EEPROM.begin(epromsize);
-    EEPROM.write(1, c % 256);
-    EEPROM.write(2, c / 256);
+    EEPROM.write(1, c && 0xff);
+    EEPROM.write(2, c >> 8);
     EEPROM.end();
     SET_PARA.ChargeCurrent = c / 64 * 64; //最小充电电流64ma
     SetChargeCurrent(c);
@@ -704,8 +712,8 @@ void callback(char *intopic, byte *payload, unsigned int length)
         c *= 10;
     }
     EEPROM.begin(epromsize);
-    EEPROM.write(3, c % 256);
-    EEPROM.write(4, c / 256);
+    EEPROM.write(3, c && 0xff);
+    EEPROM.write(4, c >> 8);
     EEPROM.end();
     SetMaxChargeVoltage(12600); //最大充电电压
   }
@@ -720,8 +728,8 @@ void callback(char *intopic, byte *payload, unsigned int length)
     }
     SetMinSysVoltage(c); //最小系统电压3s对应9v
     EEPROM.begin(epromsize);
-    EEPROM.write(5, c % 256);
-    EEPROM.write(6, c / 256);
+    EEPROM.write(5, c && 0xff);
+    EEPROM.write(6, c >> 8);
     EEPROM.end();
   }
   if (!strcmp(intopic, "ups/set/MinInV")) //输入电压设置offset 3200mV/64mv
@@ -735,8 +743,8 @@ void callback(char *intopic, byte *payload, unsigned int length)
     }
     SetInVoltage(c); //输入电压设置
     EEPROM.begin(epromsize);
-    EEPROM.write(7, c % 256);
-    EEPROM.write(8, c / 256);
+    EEPROM.write(7, c && 0xff);
+    EEPROM.write(8, c >> 8);
     EEPROM.end();
   }
   if (!strcmp(intopic, "ups/set/MaxInI"))
@@ -750,8 +758,8 @@ void callback(char *intopic, byte *payload, unsigned int length)
     }
     // c=c/50*50+50;
     EEPROM.begin(epromsize);
-    EEPROM.write(9, c % 256);
-    EEPROM.write(10, c / 256);
+    EEPROM.write(9, c && 0xff);
+    EEPROM.write(10, c >> 8);
     EEPROM.end();
     SET_PARA.IIn_Limt = c;
     SetInLimtCurrent(c); //输入电流设置  0f 0111 1111 0x7F 0e 00000 0X0 最大电流6.35A
@@ -767,8 +775,8 @@ void callback(char *intopic, byte *payload, unsigned int length)
     }
     SET_PARA.VBatOff = c;
     EEPROM.begin(epromsize);
-    EEPROM.write(11, c % 256);
-    EEPROM.write(12, c / 256);
+    EEPROM.write(11, c && 0xff);
+    EEPROM.write(12, c >> 8);
     EEPROM.end();
   }
 }
@@ -802,7 +810,7 @@ void ReadSetPara()
     READ_PARA.IIN_DPM = dataVal[1] * 50 + 50;
   }
 }
-void parapublish()
+void ParaPublish()
 {
   char temp[8] = "";
   snprintf(temp, 6, "%d", READ_PARA.MinSysVolt);
@@ -895,5 +903,5 @@ void sectohms(int tsec)
   Serial.print("uptime:");
   Serial.println(hms);
 }
-//void none(int a)
-   
+// void none(int a)
+
