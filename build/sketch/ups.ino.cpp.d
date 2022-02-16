@@ -1,5 +1,5 @@
-d:\code\DC_ups\build\sketch\bq25713test.ino.cpp.o: \
- d:\code\DC_ups\build\sketch\bq25713test.ino.cpp \
+d:\code\DC_ups\build\sketch\ups.ino.cpp.o: \
+ d:\code\DC_ups\build\sketch\ups.ino.cpp \
  C:\Users\Jesson\AppData\Local\Arduino15\packages\esp8266\hardware\esp8266\2.6.3\cores\esp8266/Arduino.h \
  C:\Users\Jesson\AppData\Local\Arduino15\packages\esp8266\hardware\esp8266\2.6.3/tools/sdk/libc/xtensa-lx106-elf/include/stdlib.h \
  C:\Users\Jesson\AppData\Local\Arduino15\packages\esp8266\hardware\esp8266\2.6.3/tools/sdk/libc/xtensa-lx106-elf/include/machine/ieeefp.h \

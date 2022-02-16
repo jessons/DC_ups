@@ -73,10 +73,10 @@ void setup()
   pinMode(CHG_OK_PIN, INPUT_PULLUP);
   pinMode(MB_LED_PIN, INPUT_PULLUP);
   pinMode(MB_START_PIN, OUTPUT);
-  pinMode(RESET_PIN, INPUT_PULLUP);
+  //pinMode(RESET_PIN, INPUT_PULLUP);
   pinMode(BOX_SW_PIN, INPUT_PULLUP);
   pinMode(BOX_LED_PIN, OUTPUT);
-  pinMode(LED_PIN, OUTPUT);
+  //pinMode(LED_PIN, OUTPUT);
   digitalWrite(MB_START_PIN, 1); //控制电脑启动的引脚 上电拉高
   Serial.begin(57600);           //初始化串口配置
   Wire.begin(SCL, SDA);          // 初始化IIC 通讯 并指定引脚做通讯
@@ -293,13 +293,15 @@ void setBytes(uint16_t value, uint16_t minVal, uint16_t maxVal, uint16_t offset,
 void ChargeStatus()
 {
   byte dataVal[2];
+  char temp[8] = "";
   boolean bqACK;
   bqACK = mreadBQ25(ChargerStatus_ADDR, dataVal, 2);
   if (bqACK)
   {
-    
-    client.publish("ups/ChargeStatus0",dataVal[0]);
-    client.publish("ups/ChargeStatus1",dataVal[1]);
+    snprintf(temp, 6, "%d", dataVal[0]);
+    client.publish("ups/ChargeStatus0",temp);
+    snprintf(temp, 6, "%d", dataVal[1]);
+    client.publish("ups/ChargeStatus1",temp);
     if (dataVal[1] & 0B10000000)
     {
       Serial.println("AC OnLine");
