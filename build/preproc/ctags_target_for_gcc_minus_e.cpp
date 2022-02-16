@@ -9,10 +9,11 @@
 
 
 //#define RESET_PIN 5       // D1 //重设网络参数 接GND
+//#define BOX_SW_PIN 15  // D8 //机箱开机引脚,接到机箱开关 接到VCC。开机时为重设网络参数
 
 
 //#define LED_PIN 16               // D0 //板载LED
-# 36 "d:\\code\\DC_ups\\ups.ino"
+# 37 "d:\\code\\DC_ups\\ups.ino"
 byte chargeopt01, chargeopt00, chargeopt31, chargeopt30, chargeopt32, chargeopt33, chargeopt34, chargeopt35, prohotopt36, prohotopt37, prohotopt38, prohotopt39;
 String ssid = "", password = "";
 char mqtt_server[50] = "";
@@ -53,16 +54,16 @@ void setup()
   pinMode(4 /* D2 // BQ25713 charge_OK 输出*/, 0x02);
   pinMode(14 /* D5 //电脑开机状态LED,接到电脑上*/, 0x02);
   pinMode(12 /* D6 //电脑开机引脚,接到电脑上*/, 0x01);
-  //pinMode(RESET_PIN, INPUT_PULLUP);
-  pinMode(15 /* D8 //机箱开机引脚,接到机箱开关 接到VCC。开机时为重设网络参数*/, 0x02);
+  // pinMode(RESET_PIN, INPUT_PULLUP);
+  pinMode(5 /* D1 //机箱开机引脚,接到机箱开关 接到VCC。开机时为重设网络参数*/, 0x02);
   pinMode(13 /* D7 //机箱开机状态LED,接到机箱led上 GND*/, 0x01);
-  //pinMode(LED_PIN, OUTPUT);
+  // pinMode(LED_PIN, OUTPUT);
   digitalWrite(12 /* D6 //电脑开机引脚,接到电脑上*/, 1); //控制电脑启动的引脚 上电拉高
   Serial.begin(57600); //初始化串口配置
   Wire.begin(0 /* D3*/, 2 /* D4*/); // 初始化IIC 通讯 并指定引脚做通讯
   delay(100);
   ReadRomBqConf();
-  if (!digitalRead(15 /* D8 //机箱开机引脚,接到机箱开关 接到VCC。开机时为重设网络参数*/)) //重新配置网络参数
+  if (!digitalRead(5 /* D1 //机箱开机引脚,接到机箱开关 接到VCC。开机时为重设网络参数*/)) // D8 重新配置网络参数
     WriteRomNetConf(20); //写网络参数到rom
   ReadRomNetConf(20); //读取网络参数
   WiFi.mode(WIFI_STA);
@@ -72,10 +73,10 @@ void setup()
 void loop()
 {
   // digitalWrite(MB_START_PIN,!digitalRead(BOX_SW_PIN));//D8上电后为0，电脑开机动作是0，外部开关接D8和VCC
-  if (digitalRead(15 /* D8 //机箱开机引脚,接到机箱开关 接到VCC。开机时为重设网络参数*/)) //外部开关触发开机
+  if (digitalRead(5 /* D1 //机箱开机引脚,接到机箱开关 接到VCC。开机时为重设网络参数*/)) //外部开关触发开机
   {
     delay(50);
-    if (digitalRead(15 /* D8 //机箱开机引脚,接到机箱开关 接到VCC。开机时为重设网络参数*/))
+    if (digitalRead(5 /* D1 //机箱开机引脚,接到机箱开关 接到VCC。开机时为重设网络参数*/))
     {
       digitalWrite(12 /* D6 //电脑开机引脚,接到电脑上*/, 0x0);
       delay(500);
@@ -279,9 +280,9 @@ void ChargeStatus()
   if (bqACK)
   {
     snprintf(temp, 6, "%d", dataVal[0]);
-    client.publish("ups/ChargeStatus0",temp);
+    client.publish("ups/ChargeStatus0", temp);
     snprintf(temp, 6, "%d", dataVal[1]);
-    client.publish("ups/ChargeStatus1",temp);
+    client.publish("ups/ChargeStatus1", temp);
     if (dataVal[1] & 0B10000000)
     {
       Serial.println("AC OnLine");
@@ -440,18 +441,33 @@ void ReadRomBqConf()
   SET_PARA.VBatOff = EEPROM.read(11) + EEPROM.read(12) << 8; // 电池关机电压
   Serial.print("bat poweroff:");
   Serial.println(SET_PARA.VBatOff);
-  // for (i = 1; i < 13; i++)
-  // Serial.println(EEPROM.read(i));
+  Serial.println("eeprom ");
+  for (i = 0; i < 200; i++)
+  {
+    Serial.print("addr ");
+    Serial.print(i);
+    Serial.print(" : ");
+    Serial.println(EEPROM.read(i));
+  }
   EEPROM.end();
 }
 void WriteRomNetConf(int i) // i 为rom 开始地址
 {
+  Serial.print("\nstart net config info\n ");
+  EEPROM.begin(200 /* EEPROM 字节分配*/);
+  for (int j = 0; j < 200 /* EEPROM 字节分配*/; j++)
+  {
+    EEPROM.write(j, 255);
+    delay(10);
+      }
+  EEPROM.end();
+  delay(100);
+  EEPROM.begin(200 /* EEPROM 字节分配*/);
   Serial.print("\nplease first input wifi ssid:\n ");
   while (!Serial.available())
   {
   }
   delay(100);
-  EEPROM.begin(200 /* EEPROM 字节分配*/);
   while (Serial.available() > 0)
   {
     EEPROM.write(i, Serial.read());
@@ -649,7 +665,7 @@ void InitBQ25() //重新初始化bq25芯片配置
   SetInVoltage(11000); //最小输入电压，触发VIDPM的电压值
 
   delay(50);*/
-# 663 "d:\\code\\DC_ups\\ups.ino"
+# 679 "d:\\code\\DC_ups\\ups.ino"
   writeBQ25(0x3A /* ADC功能设置，启用还是关闭测量*/, 0x7f, 0xa0); //打开ADC，并启动连续转换
   delay(50);
   writeBQ25(0x06, 0, 0); // OTG电压为0
@@ -673,14 +689,14 @@ void callback(char *intopic, byte *payload, unsigned int length)
       digitalWrite(12 /* D6 //电脑开机引脚,接到电脑上*/, 0x1);
     }
   }
-  if (!strcmp(intopic, "ups/set/InitBQ"))//重新初始化芯片配置参数位默认值
+  if (!strcmp(intopic, "ups/set/InitBQ")) //重新初始化芯片配置参数位默认值
   {
     if ((char)payload[0] == '1')
     {
       InitBQ25();
     }
   }
-  if (!strcmp(intopic, "ups/set/ChargeI"))//充电电流
+  if (!strcmp(intopic, "ups/set/ChargeI")) //充电电流
   {
     int c = 0;
     for (int i = 0; i < length; i++)
@@ -741,7 +757,7 @@ void callback(char *intopic, byte *payload, unsigned int length)
     EEPROM.write(8, c >> 8);
     EEPROM.end();
   }
-  if (!strcmp(intopic, "ups/set/MaxInI"))//最大输入电流
+  if (!strcmp(intopic, "ups/set/MaxInI")) //最大输入电流
   {
     int c = 0;
     for (int i = 0; i < length; i++)
@@ -896,7 +912,7 @@ void sectohms(int tsec)
    hms[i] = 's';
 
    i++;*/
-# 904 "d:\\code\\DC_ups\\ups.ino"
+# 920 "d:\\code\\DC_ups\\ups.ino"
   hms[i] = '\0';
   client.publish("ups/uptime", hms);
   Serial.print("uptime:");

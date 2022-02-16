@@ -10,8 +10,9 @@
 #define MB_LED_PIN 14     // D5 //电脑开机状态LED,接到电脑上
 #define MB_START_PIN 12   // D6 //电脑开机引脚,接到电脑上
 //#define RESET_PIN 5       // D1 //重设网络参数 接GND
-#define BOX_SW_PIN 15     // D8 //机箱开机引脚,接到机箱开关 接到VCC。开机时为重设网络参数
-#define BOX_LED_PIN 13    // D7 //机箱开机状态LED,接到机箱led上 GND
+//#define BOX_SW_PIN 15  // D8 //机箱开机引脚,接到机箱开关 接到VCC。开机时为重设网络参数
+#define BOX_SW_PIN 5  // D1 //机箱开机引脚,接到机箱开关 接到VCC。开机时为重设网络参数
+#define BOX_LED_PIN 13 // D7 //机箱开机状态LED,接到机箱led上 GND
 //#define LED_PIN 16               // D0 //板载LED
 #define SCL 0                    // D3
 #define SDA 2                    // D4
@@ -70,74 +71,74 @@ struct BqPara
 BqPara SET_PARA, READ_PARA;
 WiFiClient ups;
 PubSubClient client(ups);
-#line 71 "d:\\code\\DC_ups\\ups.ino"
+#line 72 "d:\\code\\DC_ups\\ups.ino"
 void setup();
-#line 92 "d:\\code\\DC_ups\\ups.ino"
+#line 93 "d:\\code\\DC_ups\\ups.ino"
 void loop();
-#line 140 "d:\\code\\DC_ups\\ups.ino"
+#line 141 "d:\\code\\DC_ups\\ups.ino"
 boolean mreadBQ25(byte regAddress, byte *dataVal, byte arrLen);
-#line 162 "d:\\code\\DC_ups\\ups.ino"
+#line 163 "d:\\code\\DC_ups\\ups.ino"
 boolean writeBQ25(byte regAddress, byte dataVal0, byte dataVal1);
-#line 178 "d:\\code\\DC_ups\\ups.ino"
+#line 179 "d:\\code\\DC_ups\\ups.ino"
 void SetChargeCurrent(int c);
-#line 183 "d:\\code\\DC_ups\\ups.ino"
+#line 184 "d:\\code\\DC_ups\\ups.ino"
 void SetMaxChargeVoltage(int c);
-#line 188 "d:\\code\\DC_ups\\ups.ino"
+#line 189 "d:\\code\\DC_ups\\ups.ino"
 void SetMinSysVoltage(int c);
-#line 193 "d:\\code\\DC_ups\\ups.ino"
+#line 194 "d:\\code\\DC_ups\\ups.ino"
 void SetInLimtCurrent(int c);
-#line 198 "d:\\code\\DC_ups\\ups.ino"
+#line 199 "d:\\code\\DC_ups\\ups.ino"
 void SetInVoltage(int c);
-#line 203 "d:\\code\\DC_ups\\ups.ino"
+#line 204 "d:\\code\\DC_ups\\ups.ino"
 void ADCcalc();
-#line 225 "d:\\code\\DC_ups\\ups.ino"
+#line 226 "d:\\code\\DC_ups\\ups.ino"
 void ADCSerial();
-#line 244 "d:\\code\\DC_ups\\ups.ino"
+#line 245 "d:\\code\\DC_ups\\ups.ino"
 void ADCpublish();
-#line 281 "d:\\code\\DC_ups\\ups.ino"
+#line 282 "d:\\code\\DC_ups\\ups.ino"
 void setBytes(uint16_t value, uint16_t minVal, uint16_t maxVal, uint16_t offset, uint16_t resVal);
-#line 293 "d:\\code\\DC_ups\\ups.ino"
+#line 294 "d:\\code\\DC_ups\\ups.ino"
 void ChargeStatus();
-#line 368 "d:\\code\\DC_ups\\ups.ino"
+#line 369 "d:\\code\\DC_ups\\ups.ino"
 void ADCstatus();
-#line 386 "d:\\code\\DC_ups\\ups.ino"
+#line 387 "d:\\code\\DC_ups\\ups.ino"
 void reconnectwifi();
-#line 408 "d:\\code\\DC_ups\\ups.ino"
+#line 409 "d:\\code\\DC_ups\\ups.ino"
 void reconnectmqtt();
-#line 434 "d:\\code\\DC_ups\\ups.ino"
+#line 435 "d:\\code\\DC_ups\\ups.ino"
 void ReadRomBqConf();
-#line 467 "d:\\code\\DC_ups\\ups.ino"
+#line 474 "d:\\code\\DC_ups\\ups.ino"
 void WriteRomNetConf(int i);
-#line 532 "d:\\code\\DC_ups\\ups.ino"
+#line 548 "d:\\code\\DC_ups\\ups.ino"
 void ReadRomNetConf(int i);
-#line 593 "d:\\code\\DC_ups\\ups.ino"
+#line 609 "d:\\code\\DC_ups\\ups.ino"
 void nascontrol();
-#line 627 "d:\\code\\DC_ups\\ups.ino"
+#line 643 "d:\\code\\DC_ups\\ups.ino"
 void InitBQ25();
-#line 670 "d:\\code\\DC_ups\\ups.ino"
+#line 686 "d:\\code\\DC_ups\\ups.ino"
 void callback(char *intopic, byte *payload, unsigned int length);
-#line 786 "d:\\code\\DC_ups\\ups.ino"
+#line 802 "d:\\code\\DC_ups\\ups.ino"
 void ReadSetPara();
-#line 816 "d:\\code\\DC_ups\\ups.ino"
+#line 832 "d:\\code\\DC_ups\\ups.ino"
 void ParaPublish();
-#line 849 "d:\\code\\DC_ups\\ups.ino"
+#line 865 "d:\\code\\DC_ups\\ups.ino"
 void sectohms(int tsec);
-#line 71 "d:\\code\\DC_ups\\ups.ino"
+#line 72 "d:\\code\\DC_ups\\ups.ino"
 void setup()
 {
   pinMode(CHG_OK_PIN, INPUT_PULLUP);
   pinMode(MB_LED_PIN, INPUT_PULLUP);
   pinMode(MB_START_PIN, OUTPUT);
-  //pinMode(RESET_PIN, INPUT_PULLUP);
+  // pinMode(RESET_PIN, INPUT_PULLUP);
   pinMode(BOX_SW_PIN, INPUT_PULLUP);
   pinMode(BOX_LED_PIN, OUTPUT);
-  //pinMode(LED_PIN, OUTPUT);
+  // pinMode(LED_PIN, OUTPUT);
   digitalWrite(MB_START_PIN, 1); //控制电脑启动的引脚 上电拉高
   Serial.begin(57600);           //初始化串口配置
   Wire.begin(SCL, SDA);          // 初始化IIC 通讯 并指定引脚做通讯
   delay(100);
   ReadRomBqConf();
-  if (!digitalRead(BOX_SW_PIN)) //重新配置网络参数
+  if (!digitalRead(BOX_SW_PIN)) // D8 重新配置网络参数
     WriteRomNetConf(20);       //写网络参数到rom
   ReadRomNetConf(20);          //读取网络参数
   WiFi.mode(WIFI_STA);
@@ -354,9 +355,9 @@ void ChargeStatus()
   if (bqACK)
   {
     snprintf(temp, 6, "%d", dataVal[0]);
-    client.publish("ups/ChargeStatus0",temp);
+    client.publish("ups/ChargeStatus0", temp);
     snprintf(temp, 6, "%d", dataVal[1]);
-    client.publish("ups/ChargeStatus1",temp);
+    client.publish("ups/ChargeStatus1", temp);
     if (dataVal[1] & 0B10000000)
     {
       Serial.println("AC OnLine");
@@ -515,18 +516,33 @@ void ReadRomBqConf()
   SET_PARA.VBatOff = EEPROM.read(11) + EEPROM.read(12) << 8; // 电池关机电压
   Serial.print("bat poweroff:");
   Serial.println(SET_PARA.VBatOff);
-  // for (i = 1; i < 13; i++)
-  // Serial.println(EEPROM.read(i));
+  Serial.println("eeprom ");
+  for (i = 0; i < 200; i++)
+  {
+    Serial.print("addr ");
+    Serial.print(i);
+    Serial.print(" : ");
+    Serial.println(EEPROM.read(i));
+  }
   EEPROM.end();
 }
 void WriteRomNetConf(int i) // i 为rom 开始地址
 {
+  Serial.print("\nstart net config info\n ");
+  EEPROM.begin(epromsize);
+  for (int j = 0; j < epromsize; j++)
+  {
+    EEPROM.write(j, 255);
+    delay(10);
+      }
+  EEPROM.end();
+  delay(100);
+  EEPROM.begin(epromsize);
   Serial.print("\nplease first input wifi ssid:\n ");
   while (!Serial.available())
   {
   }
   delay(100);
-  EEPROM.begin(epromsize);
   while (Serial.available() > 0)
   {
     EEPROM.write(i, Serial.read());
@@ -699,7 +715,7 @@ void InitBQ25() //重新初始化bq25芯片配置
   delay(50);
   writeBQ25(ChargerOption2_ADDR, chargeopt32, chargeopt33);
   delay(50);
-  writeBQ25(ChargerOption3_ADDR, chargeopt34, chargeopt35); 
+  writeBQ25(ChargerOption3_ADDR, chargeopt34, chargeopt35);
   delay(50);
   writeBQ25(ProchotOption0_ADDR, prohotopt36, prohotopt37);
   delay(50);
@@ -738,15 +754,15 @@ void callback(char *intopic, byte *payload, unsigned int length)
       digitalWrite(MB_START_PIN, HIGH);
     }
   }
-  if (!strcmp(intopic, "ups/set/InitBQ"))//重新初始化芯片配置参数位默认值
+  if (!strcmp(intopic, "ups/set/InitBQ")) //重新初始化芯片配置参数位默认值
   {
     if ((char)payload[0] == '1')
     {
       InitBQ25();
     }
   }
-  if (!strcmp(intopic, "ups/set/ChargeI"))//充电电流
-  { 
+  if (!strcmp(intopic, "ups/set/ChargeI")) //充电电流
+  {
     int c = 0;
     for (int i = 0; i < length; i++)
     {
@@ -762,7 +778,7 @@ void callback(char *intopic, byte *payload, unsigned int length)
     SetChargeCurrent(c);
   }
   if (!strcmp(intopic, "ups/set/MaxChargeV")) //最大充电电压
-  {                                          
+  {
     int c = 0;
     for (int i = 0; i < length; i++)
     {
@@ -785,7 +801,7 @@ void callback(char *intopic, byte *payload, unsigned int length)
       if (i < length - 1)
         c *= 10;
     }
-    SetMinSysVoltage(c); 
+    SetMinSysVoltage(c);
     EEPROM.begin(epromsize);
     EEPROM.write(5, c && 0xff);
     EEPROM.write(6, c >> 8);
@@ -806,8 +822,8 @@ void callback(char *intopic, byte *payload, unsigned int length)
     EEPROM.write(8, c >> 8);
     EEPROM.end();
   }
-  if (!strcmp(intopic, "ups/set/MaxInI"))//最大输入电流
-  { 
+  if (!strcmp(intopic, "ups/set/MaxInI")) //最大输入电流
+  {
     int c = 0;
     for (int i = 0; i < length; i++)
     {
@@ -963,4 +979,3 @@ void sectohms(int tsec)
 }
 // void none(int a)
  
-
