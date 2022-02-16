@@ -1,0 +1,132 @@
+[
+  {
+    "Sourcefile": null,
+    "Include": "",
+    "Includepath": "C:\\Users\\Jesson\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.6.3\\cores\\esp8266"
+  },
+  {
+    "Sourcefile": null,
+    "Include": "",
+    "Includepath": "C:\\Users\\Jesson\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.6.3\\variants\\nodemcu"
+  },
+  {
+    "Sourcefile": "d:\\code\\DC_ups\\build\\sketch\\bq25713test.ino.cpp",
+    "Include": "Wire.h",
+    "Includepath": "C:\\Users\\Jesson\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.6.3\\libraries\\Wire"
+  },
+  {
+    "Sourcefile": "d:\\code\\DC_ups\\build\\sketch\\bq25713test.ino.cpp",
+    "Include": "EEPROM.h",
+    "Includepath": "C:\\Users\\Jesson\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.6.3\\libraries\\EEPROM"
+  },
+  {
+    "Sourcefile": "d:\\code\\DC_ups\\build\\sketch\\bq25713test.ino.cpp",
+    "Include": "ESP8266WiFi.h",
+    "Includepath": "C:\\Users\\Jesson\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.6.3\\libraries\\ESP8266WiFi\\src"
+  },
+  {
+    "Sourcefile": "d:\\code\\DC_ups\\build\\sketch\\bq25713test.ino.cpp",
+    "Include": "PubSubClient.h",
+    "Includepath": "C:\\Users\\Jesson\\Documents\\Arduino\\libraries\\PubSubClient\\src"
+  },
+  {
+    "Sourcefile": "d:\\code\\DC_ups\\build\\sketch\\bq25713test.ino.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\Jesson\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.6.3\\libraries\\Wire\\Wire.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\Jesson\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.6.3\\libraries\\EEPROM\\EEPROM.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\Jesson\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.6.3\\libraries\\ESP8266WiFi\\src\\BearSSLHelpers.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\Jesson\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.6.3\\libraries\\ESP8266WiFi\\src\\CertStoreBearSSL.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\Jesson\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.6.3\\libraries\\ESP8266WiFi\\src\\ESP8266WiFi.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\Jesson\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.6.3\\libraries\\ESP8266WiFi\\src\\ESP8266WiFiAP.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\Jesson\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.6.3\\libraries\\ESP8266WiFi\\src\\ESP8266WiFiGeneric.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\Jesson\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.6.3\\libraries\\ESP8266WiFi\\src\\ESP8266WiFiMulti.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\Jesson\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.6.3\\libraries\\ESP8266WiFi\\src\\ESP8266WiFiSTA-WPS.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\Jesson\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.6.3\\libraries\\ESP8266WiFi\\src\\ESP8266WiFiSTA.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\Jesson\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.6.3\\libraries\\ESP8266WiFi\\src\\ESP8266WiFiScan.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\Jesson\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.6.3\\libraries\\ESP8266WiFi\\src\\WiFiClient.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\Jesson\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.6.3\\libraries\\ESP8266WiFi\\src\\WiFiClientSecureAxTLS.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\Jesson\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.6.3\\libraries\\ESP8266WiFi\\src\\WiFiClientSecureBearSSL.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\Jesson\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.6.3\\libraries\\ESP8266WiFi\\src\\WiFiServer.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\Jesson\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.6.3\\libraries\\ESP8266WiFi\\src\\WiFiServerSecureAxTLS.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\Jesson\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.6.3\\libraries\\ESP8266WiFi\\src\\WiFiServerSecureBearSSL.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\Jesson\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.6.3\\libraries\\ESP8266WiFi\\src\\WiFiUdp.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\Jesson\\Documents\\Arduino\\libraries\\PubSubClient\\src\\PubSubClient.cpp",
+    "Include": "",
+    "Includepath": null
+  }
+]

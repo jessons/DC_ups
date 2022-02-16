@@ -2,7 +2,6 @@
 #include <EEPROM.h>
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
-//#include<ESP8266mDNS.h>
 #define epromsize 200            // EEPROM 字节分配
 #define BQ25713_ADDR 0x6b        //芯片IIC地址BQ25713是6b，25713b是6a
 #define CHG_OK_PIN 4             // D2     // BQ25713 charge_OK 输出
@@ -904,4 +903,5 @@ void sectohms(int tsec)
   Serial.println(hms);
 }
 // void none(int a)
+
 
