@@ -7,8 +7,8 @@
 #define CHG_OK_PIN 4      // D2 // BQ25713 charge_OK 输出
 #define MB_LED_PIN 14     // D5 //电脑开机状态LED,接到电脑上
 #define MB_START_PIN 12   // D6 //电脑开机引脚,接到电脑上
-#define RESET_PIN 5       // D1 //重设网络参数 接GND
-#define BOX_SW_PIN 15     // D8 //机箱开机引脚,接到机箱开关 接到VCC
+//#define RESET_PIN 5       // D1 //重设网络参数 接GND
+#define BOX_SW_PIN 15     // D8 //机箱开机引脚,接到机箱开关 接到VCC。开机时为重设网络参数
 #define BOX_LED_PIN 13    // D7 //机箱开机状态LED,接到机箱led上 GND
 //#define LED_PIN 16               // D0 //板载LED
 #define SCL 0                    // D3
@@ -82,7 +82,7 @@ void setup()
   Wire.begin(SCL, SDA);          // 初始化IIC 通讯 并指定引脚做通讯
   delay(100);
   ReadRomBqConf();
-  if (!digitalRead(RESET_PIN)) // D1=0重新配置网络参数
+  if (!digitalRead(BOX_SW_PIN)) //重新配置网络参数
     WriteRomNetConf(20);       //写网络参数到rom
   ReadRomNetConf(20);          //读取网络参数
   WiFi.mode(WIFI_STA);
