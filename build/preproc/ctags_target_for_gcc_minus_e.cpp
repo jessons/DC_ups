@@ -414,35 +414,35 @@ void reconnectmqtt()
 }
 void ReadRomBqConf()
 {
-  int c;
+  unsigned int c;
   EEPROM.begin(200 /* EEPROM 字节分配*/);
-  c = EEPROM.read(1) + EEPROM.read(2) << 8; //充电电流
+  c = (EEPROM.read(2) << 8) + EEPROM.read(1); //充电电流
   Serial.print("charge current:");
   Serial.println(c);
   SET_PARA.ChargeCurrent = c;
   SetChargeCurrent(c);
-  c = EEPROM.read(3) + EEPROM.read(4) << 8; //最大充电电压
+  c = (EEPROM.read(4) << 8) + EEPROM.read(3); //最大充电电压
   Serial.print("max chagre V:");
   Serial.println(c);
   SetMaxChargeVoltage(c);
-  c = EEPROM.read(5) + EEPROM.read(6) << 8; //最小系统电压3s对应9v
+  c = (EEPROM.read(6) << 8) + EEPROM.read(5); //最小系统电压3s对应9v
   Serial.print("min sys V:");
   Serial.println(c);
   SetMinSysVoltage(c);
-  c = EEPROM.read(7) + EEPROM.read(8) << 8; //最小输入电压，触发VIDPM的电压
+  c = (EEPROM.read(8) << 8) + EEPROM.read(7); //最小输入电压，触发VIDPM的电压
   Serial.print("input VIDPM:");
   Serial.println(c);
   SetInVoltage(c);
-  c = EEPROM.read(9) + EEPROM.read(10) << 8; //输入电流设置
+  c = (EEPROM.read(10) << 8) + EEPROM.read(9); //输入电流设置
   SET_PARA.IIn_Limt = c;
   Serial.print("input current:");
   Serial.println(c);
   SetInLimtCurrent(c);
-  SET_PARA.VBatOff = EEPROM.read(11) + EEPROM.read(12) << 8; // 电池关机电压
+  SET_PARA.VBatOff = (EEPROM.read(12) << 8) + EEPROM.read(11); // 电池关机电压
   Serial.print("bat poweroff:");
   Serial.println(SET_PARA.VBatOff);
   Serial.println("eeprom ");
-  for (i = 0; i < 200; i++)
+  for (i = 0; i < 70; i++)
   {
     Serial.print("addr ");
     Serial.print(i);
@@ -459,7 +459,7 @@ void WriteRomNetConf(int i) // i 为rom 开始地址
   {
     EEPROM.write(j, 255);
     delay(10);
-      }
+  }
   EEPROM.end();
   delay(100);
   EEPROM.begin(200 /* EEPROM 字节分配*/);
@@ -698,7 +698,7 @@ void callback(char *intopic, byte *payload, unsigned int length)
   }
   if (!strcmp(intopic, "ups/set/ChargeI")) //充电电流
   {
-    int c = 0;
+    unsigned int c = 0;
     for (int i = 0; i < length; i++)
     {
       c += (int)(payload[i] - 48);
@@ -706,7 +706,7 @@ void callback(char *intopic, byte *payload, unsigned int length)
         c *= 10;
     }
     EEPROM.begin(200 /* EEPROM 字节分配*/);
-    EEPROM.write(1, c && 0xff);
+    EEPROM.write(1, c & 0xff);
     EEPROM.write(2, c >> 8);
     EEPROM.end();
     SET_PARA.ChargeCurrent = c / 64 * 64; //最小充电电流64ma
@@ -714,7 +714,7 @@ void callback(char *intopic, byte *payload, unsigned int length)
   }
   if (!strcmp(intopic, "ups/set/MaxChargeV")) //最大充电电压
   {
-    int c = 0;
+    unsigned int c = 0;
     for (int i = 0; i < length; i++)
     {
       c += (int)(payload[i] - 48);
@@ -722,14 +722,14 @@ void callback(char *intopic, byte *payload, unsigned int length)
         c *= 10;
     }
     EEPROM.begin(200 /* EEPROM 字节分配*/);
-    EEPROM.write(3, c && 0xff);
+    EEPROM.write(3, c & 0xff);
     EEPROM.write(4, c >> 8);
     EEPROM.end();
     SetMaxChargeVoltage(12600); //最大充电电压
   }
   if (!strcmp(intopic, "ups/set/MinSysV")) //最小系统电压
   {
-    int c = 0;
+    unsigned int c = 0;
     for (int i = 0; i < length; i++)
     {
       c += (int)(payload[i] - 48);
@@ -738,13 +738,13 @@ void callback(char *intopic, byte *payload, unsigned int length)
     }
     SetMinSysVoltage(c);
     EEPROM.begin(200 /* EEPROM 字节分配*/);
-    EEPROM.write(5, c && 0xff);
+    EEPROM.write(5, c & 0xff);
     EEPROM.write(6, c >> 8);
     EEPROM.end();
   }
   if (!strcmp(intopic, "ups/set/MinInV")) //输入电压设置
   {
-    int c = 0;
+    unsigned int c = 0;
     for (int i = 0; i < length; i++)
     {
       c += (int)(payload[i] - 48);
@@ -753,13 +753,13 @@ void callback(char *intopic, byte *payload, unsigned int length)
     }
     SetInVoltage(c); //输入电压设置
     EEPROM.begin(200 /* EEPROM 字节分配*/);
-    EEPROM.write(7, c && 0xff);
+    EEPROM.write(7, c & 0xff);
     EEPROM.write(8, c >> 8);
     EEPROM.end();
   }
   if (!strcmp(intopic, "ups/set/MaxInI")) //最大输入电流
   {
-    int c = 0;
+    unsigned int c = 0;
     for (int i = 0; i < length; i++)
     {
       c += (int)(payload[i] - 48);
@@ -767,7 +767,7 @@ void callback(char *intopic, byte *payload, unsigned int length)
         c *= 10;
     }
     EEPROM.begin(200 /* EEPROM 字节分配*/);
-    EEPROM.write(9, c && 0xff);
+    EEPROM.write(9, c & 0xff);
     EEPROM.write(10, c >> 8);
     EEPROM.end();
     SET_PARA.IIn_Limt = c;
@@ -775,7 +775,7 @@ void callback(char *intopic, byte *payload, unsigned int length)
   }
   if (!strcmp(intopic, "ups/set/VBatOff")) //电池关机电压,电源不在线时
   {
-    int c = 0;
+    unsigned int c = 0;
     for (int i = 0; i < length; i++)
     {
       c += (int)(payload[i] - 48);
@@ -784,7 +784,7 @@ void callback(char *intopic, byte *payload, unsigned int length)
     }
     SET_PARA.VBatOff = c;
     EEPROM.begin(200 /* EEPROM 字节分配*/);
-    EEPROM.write(11, c && 0xff);
+    EEPROM.write(11, c & 0xff);
     EEPROM.write(12, c >> 8);
     EEPROM.end();
   }
