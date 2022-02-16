@@ -2,20 +2,20 @@
 #include <EEPROM.h>
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
-#define epromsize 200            // EEPROM 字节分配
-#define BQ25713_ADDR 0x6b        //芯片IIC地址BQ25713是6b，25713b是6a
-#define CHG_OK_PIN 4             // D2     // BQ25713 charge_OK 输出
-#define MB_LED_PIN 14            // D5     //电脑开机状态LED,接到电脑上
-#define MB_START_PIN 12          // D6   //电脑开机引脚,接到电脑上
-#define RESET_PIN 5              // D1      //重设网络参数
-#define BOX_SW_PIN 15            // D8     //电脑开机引脚,接到机箱开关
-#define BOX_LED_PIN 13           // D7    //电脑开机状态LED,接到机箱led上
-#define LED_PIN 16               // D0 板载LED
-#define SCL 0                    // d3
-#define SDA 2                    // d4
-#define ChargerStatus_ADDR 0x20  // R
+#define epromsize 200     // EEPROM 字节分配
+#define BQ25713_ADDR 0x6b //芯片IIC地址BQ25713是6b，25713b是6a
+#define CHG_OK_PIN 4      // D2 // BQ25713 charge_OK 输出
+#define MB_LED_PIN 14     // D5 //电脑开机状态LED,接到电脑上
+#define MB_START_PIN 12   // D6 //电脑开机引脚,接到电脑上
+#define RESET_PIN 5       // D1 //重设网络参数 接GND
+#define BOX_SW_PIN 15     // D8 //机箱开机引脚,接到机箱开关 接到VCC
+#define BOX_LED_PIN 13    // D7 //机箱开机状态LED,接到机箱led上 GND
+//#define LED_PIN 16               // D0 //板载LED
+#define SCL 0                    // D3
+#define SDA 2                    // D4
+#define ChargerStatus_ADDR 0x20  // R 充电状态
 #define IIN_DPM_ADDR 0X24        // R 实际输入电流限制值 ICO以后要重设输入电流限制
-#define ADC_ADDR 0x26            // R 0x26-0x2D
+#define ADC_ADDR 0x26            // R 0x26-0x2D  ADC测量结果
 #define ManufacturerID_ADDR 0x2E //==40H
 #define DeviceID_ADDR 0x2F       //==I2C: 88h (BQ25713); 8Ah (BQ25713B)
 #define ChargerOption0_ADDR 0x00 //
@@ -79,7 +79,7 @@ void setup()
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(MB_START_PIN, 1); //控制电脑启动的引脚 上电拉高
   Serial.begin(57600);           //初始化串口配置
-  Wire.begin(SCL, SDA);          // D3, D4);            // 初始化IIC 通讯 并指定引脚做通讯
+  Wire.begin(SCL, SDA);          // 初始化IIC 通讯 并指定引脚做通讯
   delay(100);
   ReadRomBqConf();
   if (!digitalRead(RESET_PIN)) // D1=0重新配置网络参数
@@ -121,11 +121,7 @@ void loop()
     ChargeStatus();
     ReadSetPara();
     ParaPublish();
-    if (abs(READ_PARA.IIN_DPM - SET_PARA.IIn_Limt) > 100) //重新设置输入电流限制
-      SetInLimtCurrent(SET_PARA.IIn_Limt);
     ADCstatus();
-    if (abs(SET_PARA.ChargeCurrent - READ_PARA.ChargeCurrent) > 100) //重新设定冲电电流
-      SetChargeCurrent(SET_PARA.ChargeCurrent);
     bqflag = mreadBQ25(ADC_ADDR, getADC, 8); // adc状态监控
     if (bqflag)
     {
@@ -133,6 +129,10 @@ void loop()
       ADCSerial();
       ADCpublish();
     }
+    if (abs(READ_PARA.IIN_DPM - SET_PARA.IIn_Limt) > 100) //重新设置输入电流限制
+      SetInLimtCurrent(SET_PARA.IIn_Limt);
+    if (abs(SET_PARA.ChargeCurrent - READ_PARA.ChargeCurrent) > 100) //重新设定充电电流
+      SetChargeCurrent(SET_PARA.ChargeCurrent);
     if (!(j % 60))
       nascontrol(); //大约每3分钟执行1次nascontrol函数
   }
@@ -182,18 +182,18 @@ void SetChargeCurrent(int c)
 }
 void SetMaxChargeVoltage(int c)
 {
-  setBytes(c, 1024, 19200, 0, 8);
+  setBytes(c, 1024, 16128, 0, 8);
   writeBQ25(MaxChargeVoltage_ADDR, LSB, MSB);
 }
 void SetMinSysVoltage(int c)
 {
-  c /= 256;
-  writeBQ25(MinSysVolt_ADDR, 0, c);
+  setBytes(c, 1024, 19200, 0, 256);
+  writeBQ25(MinSysVolt_ADDR, 0, MSB);
 }
 void SetInLimtCurrent(int c)
 {
-  c /= 50;
-  writeBQ25(IIN_LIM_ADDR, 0, c);
+  setBytes(c, 0, 6400, 50, 50);
+  writeBQ25(IIN_LIM_ADDR, 0, MSB);
 }
 void SetInVoltage(int c)
 {
@@ -287,8 +287,8 @@ void setBytes(uint16_t value, uint16_t minVal, uint16_t maxVal, uint16_t offset,
   value = value - offset;
   value = value / resVal;
   value = value * resVal;
-  LSB = (byte)(value);
-  MSB = (byte)(value >> 8);
+  LSB = value && 0xff;
+  MSB = value >> 8;
 }
 void ChargeStatus()
 {
@@ -299,12 +299,12 @@ void ChargeStatus()
   {
     if (dataVal[1] & 0B10000000)
     {
-      Serial.println("AC STATE OnLine");
+      Serial.println("AC OnLine");
       ACstat = true;
     }
     else
     {
-      Serial.println("AC STATE OffLine");
+      Serial.println("AC OffLine");
       ACstat = false;
     }
     if (dataVal[1] & 0B1000000)
@@ -430,33 +430,33 @@ void ReadRomBqConf()
 {
   int c;
   EEPROM.begin(epromsize);
-  c = EEPROM.read(1) + EEPROM.read(2) << 8;
-  Serial.print("charge I:");
+  c = EEPROM.read(1) + EEPROM.read(2) << 8; //充电电流
+  Serial.print("charge current:");
   Serial.println(c);
   SET_PARA.ChargeCurrent = c;
-  SetChargeCurrent(c); //充电电流
-  c = EEPROM.read(3) + EEPROM.read(4) << 8;
+  SetChargeCurrent(c);
+  c = EEPROM.read(3) + EEPROM.read(4) << 8;//最大充电电压
   Serial.print("max chagre V:");
   Serial.println(c);
-  SetMaxChargeVoltage(c); //最大充电电压
-  c = EEPROM.read(5) + EEPROM.read(6) << 8;
+  SetMaxChargeVoltage(c); 
+  c = EEPROM.read(5) + EEPROM.read(6) << 8;//最小系统电压3s对应9v
   Serial.print("min sys V:");
   Serial.println(c);
-  SetMinSysVoltage(c); //最小系统电压3s对应9v
-  c = EEPROM.read(7) + EEPROM.read(8) << 8;
+  SetMinSysVoltage(c); 
+  c = EEPROM.read(7) + EEPROM.read(8) << 8;//最小输入电压，触发VIDPM的电压
   Serial.print("input VIDPM:");
   Serial.println(c);
-  SetInVoltage(c); //最小输入电压，触发VIDPM的电压值16=4.096v
-  c = EEPROM.read(9) + EEPROM.read(10) << 8;
+  SetInVoltage(c); 
+  c = EEPROM.read(9) + EEPROM.read(10) << 8;//输入电流设置
   SET_PARA.IIn_Limt = c;
-  Serial.print("input I:");
+  Serial.print("input current:");
   Serial.println(c);
-  SetInLimtCurrent(c);                                       //输入电流设置 默认3.2A
+  SetInLimtCurrent(c);                                       
   SET_PARA.VBatOff = EEPROM.read(11) + EEPROM.read(12) << 8; // 电池关机电压
   Serial.print("bat poweroff:");
   Serial.println(SET_PARA.VBatOff);
-  for (i = 1; i < 13; i++)
-    Serial.println(EEPROM.read(i));
+ // for (i = 1; i < 13; i++)
+   // Serial.println(EEPROM.read(i));
   EEPROM.end();
 }
 void WriteRomNetConf(int i) // i 为rom 开始地址
@@ -592,10 +592,10 @@ void nascontrol()
     delay(200);
     if (digitalRead(MB_LED_PIN)) //延时防抖 再判断是否开机
     {
-      if ((!digitalRead(CHG_OK_PIN)) || (!ACstat)) //如果电源断电
-      {                                            //关机条件
-        if (ADC.VBAT < SET_PARA.VBatOff)
-        { //电池电压低于10v
+      if ((!digitalRead(CHG_OK_PIN)) || (!ACstat)) //如果电源断电或有错误
+      {                                           
+        if (ADC.VBAT < SET_PARA.VBatOff)//电池电压低于关机电压
+        { 
           digitalWrite(MB_START_PIN, LOW);
           delay(500);
           digitalWrite(MB_START_PIN, HIGH);
@@ -609,7 +609,7 @@ void nascontrol()
     delay(200);
     if (!(digitalRead(MB_LED_PIN))) ////延时防抖 再判断是否开机
     {
-      if (digitalRead(CHG_OK_PIN) && ACstat) //开机
+      if (digitalRead(CHG_OK_PIN) && ACstat) //没有错误则开机
       {
         digitalWrite(MB_START_PIN, LOW);
         delay(500);
@@ -619,7 +619,7 @@ void nascontrol()
     }
   }
 }
-void InitBQ25()
+void InitBQ25()//重新初始化bq25芯片配置
 {
   chargeopt00 = 0x0e; // 0000 1110=0e
   chargeopt01 = 0x87; // 1000 0111=87
@@ -645,7 +645,7 @@ void InitBQ25()
   delay(50);
   writeBQ25(ProchotOption1_ADDR, prohotopt38, prohotopt39);
   delay(50);
-  SetInLimtCurrent(3500); //输入电流设置 默认3.2A
+  /*SetInLimtCurrent(3500); //输入电流设置 默认3.2A
   delay(50);
   SetMinSysVoltage(11000); //最小系统电压3s对应9v
   delay(100);
@@ -654,13 +654,13 @@ void InitBQ25()
   SetChargeCurrent(1500); //充电电流
   delay(50);
   SetInVoltage(11000); //最小输入电压，触发VIDPM的电压值16=4.096v
-  delay(50);
+  delay(50);*/
   writeBQ25(ADCENS_ADDR, 0x7f, 0xa0); //打开ADC，并启动连续转换
   delay(50);
   writeBQ25(0x06, 0, 0); // OTG电压为0
   delay(50);
   writeBQ25(0x08, 0, 0); // OTG电流为0，不使用OTG功能
-  SET_PARA.VBatOff = 12600;
+  //SET_PARA.VBatOff = 12600;
 }
 void callback(char *intopic, byte *payload, unsigned int length)
 {
@@ -903,5 +903,4 @@ void sectohms(int tsec)
   Serial.println(hms);
 }
 // void none(int a)
-
 
