@@ -73,53 +73,53 @@ PubSubClient client(ups);
 void setup();
 #line 89 "d:\\code\\DC_ups\\ups.ino"
 void loop();
-#line 138 "d:\\code\\DC_ups\\ups.ino"
+#line 136 "d:\\code\\DC_ups\\ups.ino"
 boolean mreadBQ25(byte regAddress, byte *dataVal, byte arrLen);
-#line 160 "d:\\code\\DC_ups\\ups.ino"
+#line 158 "d:\\code\\DC_ups\\ups.ino"
 boolean writeBQ25(byte regAddress, byte dataVal0, byte dataVal1);
-#line 176 "d:\\code\\DC_ups\\ups.ino"
+#line 174 "d:\\code\\DC_ups\\ups.ino"
 void SetChargeCurrent(int c);
-#line 181 "d:\\code\\DC_ups\\ups.ino"
+#line 179 "d:\\code\\DC_ups\\ups.ino"
 void SetMaxChargeVoltage(int c);
-#line 186 "d:\\code\\DC_ups\\ups.ino"
+#line 184 "d:\\code\\DC_ups\\ups.ino"
 void SetMinSysVoltage(int c);
-#line 191 "d:\\code\\DC_ups\\ups.ino"
+#line 189 "d:\\code\\DC_ups\\ups.ino"
 void SetInLimtCurrent(int c);
-#line 196 "d:\\code\\DC_ups\\ups.ino"
+#line 199 "d:\\code\\DC_ups\\ups.ino"
 void SetInVoltage(int c);
-#line 201 "d:\\code\\DC_ups\\ups.ino"
+#line 204 "d:\\code\\DC_ups\\ups.ino"
 void ADCcalc();
-#line 223 "d:\\code\\DC_ups\\ups.ino"
+#line 226 "d:\\code\\DC_ups\\ups.ino"
 void ADCSerial();
-#line 242 "d:\\code\\DC_ups\\ups.ino"
+#line 245 "d:\\code\\DC_ups\\ups.ino"
 void ADCpublish();
-#line 279 "d:\\code\\DC_ups\\ups.ino"
+#line 282 "d:\\code\\DC_ups\\ups.ino"
 void setBytes(uint16_t value, uint16_t minVal, uint16_t maxVal, uint16_t offset, uint16_t resVal);
-#line 291 "d:\\code\\DC_ups\\ups.ino"
+#line 294 "d:\\code\\DC_ups\\ups.ino"
 void ChargeStatus();
-#line 366 "d:\\code\\DC_ups\\ups.ino"
+#line 369 "d:\\code\\DC_ups\\ups.ino"
 void ADCstatus();
-#line 384 "d:\\code\\DC_ups\\ups.ino"
+#line 387 "d:\\code\\DC_ups\\ups.ino"
 void reconnectwifi();
-#line 406 "d:\\code\\DC_ups\\ups.ino"
+#line 409 "d:\\code\\DC_ups\\ups.ino"
 void reconnectmqtt();
-#line 432 "d:\\code\\DC_ups\\ups.ino"
+#line 435 "d:\\code\\DC_ups\\ups.ino"
 void ReadRomBqConf();
-#line 471 "d:\\code\\DC_ups\\ups.ino"
+#line 474 "d:\\code\\DC_ups\\ups.ino"
 void WriteRomNetConf(int i);
-#line 545 "d:\\code\\DC_ups\\ups.ino"
+#line 548 "d:\\code\\DC_ups\\ups.ino"
 void ReadRomNetConf(int i);
-#line 606 "d:\\code\\DC_ups\\ups.ino"
+#line 609 "d:\\code\\DC_ups\\ups.ino"
 void nascontrol();
-#line 640 "d:\\code\\DC_ups\\ups.ino"
+#line 643 "d:\\code\\DC_ups\\ups.ino"
 void InitBQ25();
-#line 683 "d:\\code\\DC_ups\\ups.ino"
+#line 686 "d:\\code\\DC_ups\\ups.ino"
 void callback(char *intopic, byte *payload, unsigned int length);
-#line 799 "d:\\code\\DC_ups\\ups.ino"
+#line 802 "d:\\code\\DC_ups\\ups.ino"
 void ReadSetPara();
-#line 829 "d:\\code\\DC_ups\\ups.ino"
+#line 832 "d:\\code\\DC_ups\\ups.ino"
 void ParaPublish();
-#line 857 "d:\\code\\DC_ups\\ups.ino"
+#line 860 "d:\\code\\DC_ups\\ups.ino"
 void sectohms(int tsec);
 #line 70 "d:\\code\\DC_ups\\ups.ino"
 void setup()
@@ -157,9 +157,7 @@ void loop()
   if (millis() - now > 2000) //每2s执行一次
   {
     j++;
-    digitalWrite(BOX_LED_PIN, digitalRead(MB_LED_PIN));//电脑开机状态转到机箱LED
-    Serial.print("mb led ");
-    Serial.println(digitalRead(MB_LED_PIN));
+    digitalWrite(BOX_LED_PIN, digitalRead(MB_LED_PIN)); //电脑开机状态转到机箱LED
     if (WiFi.status() != WL_CONNECTED)
       reconnectwifi();
     if (!client.connected() && WiFi.status() == WL_CONNECTED)
@@ -245,8 +243,13 @@ void SetMinSysVoltage(int c)
 }
 void SetInLimtCurrent(int c)
 {
-  setBytes(c, 50, 6400, 50, 50);
-  writeBQ25(IIN_LIM_ADDR, 0, LSB / 50); //电流限制不是2进制组合需要转换成2进制，8位数据
+  if (c < 50)
+    c = 50;
+  if (c > 6400)
+    c = 6400;
+  c -= 50;
+  c /= 50;
+  writeBQ25(IIN_LIM_ADDR, 0, c); //电流限制不是2进制组合需要转换成2进制，8位数据
 }
 void SetInVoltage(int c)
 {
@@ -367,8 +370,8 @@ void ChargeStatus()
     }
     if (dataVal[1] & 0B1000000)
     {
-      Serial.println("ICO DONE Y");                     // ICO 以后需要重设输入电流设置
-      writeBQ25(IIN_LIM_ADDR, 0x00, SET_PARA.IIn_Limt); // 输入电流设置
+      Serial.println("ICO DONE Y");        // ICO 以后需要重设输入电流设置
+      SetInLimtCurrent(SET_PARA.IIn_Limt); // 输入电流设置
       delay(10);
     }
     if (dataVal[1] & 0B100000)
@@ -858,19 +861,19 @@ void ReadSetPara()
   dataVal[1] = 0;
   if (mreadBQ25(ChargeCurrent_ADDR, dataVal, 2))
   {
-    READ_PARA.ChargeCurrent = dataVal[1] << 8 + dataVal[0];
+    READ_PARA.ChargeCurrent = dataVal[1] * 256 + dataVal[0];
   }
   if (mreadBQ25(MaxChargeVoltage_ADDR, dataVal, 2))
   {
-    READ_PARA.MaxChargeVoltage = dataVal[1] << 8 + dataVal[0];
+    READ_PARA.MaxChargeVoltage = dataVal[1] * 256 + dataVal[0];
   }
   if (mreadBQ25(MinSysVolt_ADDR, dataVal, 2))
   {
-    READ_PARA.MinSysVolt = dataVal[1] << 8 * 256;
+    READ_PARA.MinSysVolt = dataVal[1] * 256;
   }
   if (mreadBQ25(InputVoltage_ADDR, dataVal, 2))
   {
-    READ_PARA.MinInputV = dataVal[1] << 8 + dataVal[0] + 3200;
+    READ_PARA.MinInputV = dataVal[1] * 256 + dataVal[0] + 3200;
   }
   if (mreadBQ25(IIN_LIM_ADDR, dataVal, 2))
   {
@@ -969,5 +972,5 @@ void sectohms(int tsec)
   Serial.print("uptime:");
   Serial.println(hms);
 }
-//finish
+// finish
 

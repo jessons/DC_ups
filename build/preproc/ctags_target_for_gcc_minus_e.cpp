@@ -82,9 +82,7 @@ void loop()
   if (millis() - now > 2000) //每2s执行一次
   {
     j++;
-    digitalWrite(15 /* D8 // 机箱开机状态LED,接到机箱led上 GND*/, digitalRead(14 /* D5 // 电脑开机状态LED,接到电脑上*/));//电脑开机状态转到机箱LED
-    Serial.print("mb led ");
-    Serial.println(digitalRead(14 /* D5 // 电脑开机状态LED,接到电脑上*/));
+    digitalWrite(15 /* D8 // 机箱开机状态LED,接到机箱led上 GND*/, digitalRead(14 /* D5 // 电脑开机状态LED,接到电脑上*/)); //电脑开机状态转到机箱LED
     if (WiFi.status() != WL_CONNECTED)
       reconnectwifi();
     if (!client.connected() && WiFi.status() == WL_CONNECTED)
@@ -170,8 +168,13 @@ void SetMinSysVoltage(int c)
 }
 void SetInLimtCurrent(int c)
 {
-  setBytes(c, 50, 6400, 50, 50);
-  writeBQ25(0x0E /* 50-6400mA /50mA offset 50mA，电流限制不是2进制组合需要转换成2进制，8位数据*/, 0, LSB / 50); //电流限制不是2进制组合需要转换成2进制，8位数据
+  if (c < 50)
+    c = 50;
+  if (c > 6400)
+    c = 6400;
+  c -= 50;
+  c /= 50;
+  writeBQ25(0x0E /* 50-6400mA /50mA offset 50mA，电流限制不是2进制组合需要转换成2进制，8位数据*/, 0, c); //电流限制不是2进制组合需要转换成2进制，8位数据
 }
 void SetInVoltage(int c)
 {
@@ -293,7 +296,7 @@ void ChargeStatus()
     if (dataVal[1] & 0B1000000)
     {
       Serial.println("ICO DONE Y"); // ICO 以后需要重设输入电流设置
-      writeBQ25(0x0E /* 50-6400mA /50mA offset 50mA，电流限制不是2进制组合需要转换成2进制，8位数据*/, 0x00, SET_PARA.IIn_Limt); // 输入电流设置
+      SetInLimtCurrent(SET_PARA.IIn_Limt); // 输入电流设置
       delay(10);
     }
     if (dataVal[1] & 0B100000)
@@ -453,7 +456,7 @@ void ReadRomBqConf()
      Serial.println(EEPROM.read(i));
 
    }*/
-# 469 "d:\\code\\DC_ups\\ups.ino"
+# 472 "d:\\code\\DC_ups\\ups.ino"
   EEPROM.end();
 }
 void WriteRomNetConf(int i) // i 为rom 开始地址
@@ -670,7 +673,7 @@ void InitBQ25() //重新初始化bq25芯片配置
   SetInVoltage(11000); //最小输入电压，触发VIDPM的电压值
 
   delay(50);*/
-# 676 "d:\\code\\DC_ups\\ups.ino"
+# 679 "d:\\code\\DC_ups\\ups.ino"
   writeBQ25(0x3A /* ADC功能设置，启用还是关闭测量*/, 0x7f, 0xa0); //打开ADC，并启动连续转换
   delay(50);
   writeBQ25(0x06, 0, 0); // OTG电压为0
@@ -801,19 +804,19 @@ void ReadSetPara()
   dataVal[1] = 0;
   if (mreadBQ25(0x02 /* 0-8128mA /64mA offset 0*/, dataVal, 2))
   {
-    READ_PARA.ChargeCurrent = dataVal[1] << 8 + dataVal[0];
+    READ_PARA.ChargeCurrent = dataVal[1] * 256 + dataVal[0];
   }
   if (mreadBQ25(0x04 /* 1024-19200mV /8mV offset 0*/, dataVal, 2))
   {
-    READ_PARA.MaxChargeVoltage = dataVal[1] << 8 + dataVal[0];
+    READ_PARA.MaxChargeVoltage = dataVal[1] * 256 + dataVal[0];
   }
   if (mreadBQ25(0x0C /* 1024-16128mV /256mV offset 0*/, dataVal, 2))
   {
-    READ_PARA.MinSysVolt = dataVal[1] << 8 * 256;
+    READ_PARA.MinSysVolt = dataVal[1] * 256;
   }
   if (mreadBQ25(0x0A /* 3200-19584mV /64mV offset 3200，低于这个值就引发vidpm*/, dataVal, 2))
   {
-    READ_PARA.MinInputV = dataVal[1] << 8 + dataVal[0] + 3200;
+    READ_PARA.MinInputV = dataVal[1] * 256 + dataVal[0] + 3200;
   }
   if (mreadBQ25(0x0E /* 50-6400mA /50mA offset 50mA，电流限制不是2进制组合需要转换成2进制，8位数据*/, dataVal, 2))
   {
@@ -912,10 +915,10 @@ void sectohms(int tsec)
    hms[i] = 's';
 
    i++;*/
-# 912 "d:\\code\\DC_ups\\ups.ino"
+# 915 "d:\\code\\DC_ups\\ups.ino"
   hms[i] = '\0';
   client.publish("ups/uptime", hms);
   Serial.print("uptime:");
   Serial.println(hms);
 }
-//finish
+// finish

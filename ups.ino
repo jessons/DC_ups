@@ -102,9 +102,7 @@ void loop()
   if (millis() - now > 2000) //每2s执行一次
   {
     j++;
-    digitalWrite(BOX_LED_PIN, digitalRead(MB_LED_PIN));//电脑开机状态转到机箱LED
-    Serial.print("mb led ");
-    Serial.println(digitalRead(MB_LED_PIN));
+    digitalWrite(BOX_LED_PIN, digitalRead(MB_LED_PIN)); //电脑开机状态转到机箱LED
     if (WiFi.status() != WL_CONNECTED)
       reconnectwifi();
     if (!client.connected() && WiFi.status() == WL_CONNECTED)
@@ -190,8 +188,13 @@ void SetMinSysVoltage(int c)
 }
 void SetInLimtCurrent(int c)
 {
-  setBytes(c, 50, 6400, 50, 50);
-  writeBQ25(IIN_LIM_ADDR, 0, LSB / 50); //电流限制不是2进制组合需要转换成2进制，8位数据
+  if (c < 50)
+    c = 50;
+  if (c > 6400)
+    c = 6400;
+  c -= 50;
+  c /= 50;
+  writeBQ25(IIN_LIM_ADDR, 0, c); //电流限制不是2进制组合需要转换成2进制，8位数据
 }
 void SetInVoltage(int c)
 {
@@ -312,8 +315,8 @@ void ChargeStatus()
     }
     if (dataVal[1] & 0B1000000)
     {
-      Serial.println("ICO DONE Y");                     // ICO 以后需要重设输入电流设置
-      writeBQ25(IIN_LIM_ADDR, 0x00, SET_PARA.IIn_Limt); // 输入电流设置
+      Serial.println("ICO DONE Y");        // ICO 以后需要重设输入电流设置
+      SetInLimtCurrent(SET_PARA.IIn_Limt); // 输入电流设置
       delay(10);
     }
     if (dataVal[1] & 0B100000)
@@ -803,19 +806,19 @@ void ReadSetPara()
   dataVal[1] = 0;
   if (mreadBQ25(ChargeCurrent_ADDR, dataVal, 2))
   {
-    READ_PARA.ChargeCurrent = dataVal[1] << 8 + dataVal[0];
+    READ_PARA.ChargeCurrent = dataVal[1] * 256 + dataVal[0];
   }
   if (mreadBQ25(MaxChargeVoltage_ADDR, dataVal, 2))
   {
-    READ_PARA.MaxChargeVoltage = dataVal[1] << 8 + dataVal[0];
+    READ_PARA.MaxChargeVoltage = dataVal[1] * 256 + dataVal[0];
   }
   if (mreadBQ25(MinSysVolt_ADDR, dataVal, 2))
   {
-    READ_PARA.MinSysVolt = dataVal[1] << 8 * 256;
+    READ_PARA.MinSysVolt = dataVal[1] * 256;
   }
   if (mreadBQ25(InputVoltage_ADDR, dataVal, 2))
   {
-    READ_PARA.MinInputV = dataVal[1] << 8 + dataVal[0] + 3200;
+    READ_PARA.MinInputV = dataVal[1] * 256 + dataVal[0] + 3200;
   }
   if (mreadBQ25(IIN_LIM_ADDR, dataVal, 2))
   {
@@ -914,4 +917,4 @@ void sectohms(int tsec)
   Serial.print("uptime:");
   Serial.println(hms);
 }
-//finish
+// finish
