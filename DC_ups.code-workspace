@@ -11,8 +11,7 @@
 			"array": "cpp",
 			"tuple": "cpp",
 			"type_traits": "cpp",
-			"utility": "cpp",
-			"random": "cpp"
+			"utility": "cpp"
 		}
 	}
 }
