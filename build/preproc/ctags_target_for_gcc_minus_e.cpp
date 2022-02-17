@@ -8,12 +8,10 @@
 
 
 
-//#define RESET_PIN 5       // D1 //重设网络参数 接GND
-//#define BOX_SW_PIN 15  // D8 //机箱开机引脚,接到机箱开关 接到VCC。开机时为重设网络参数
 
 
-//#define LED_PIN 16               // D0 //板载LED
-# 37 "d:\\code\\DC_ups\\ups.ino"
+//#define LED_PIN 2               // D0 //板载LED
+# 35 "d:\\code\\DC_ups\\ups.ino"
 byte chargeopt01, chargeopt00, chargeopt31, chargeopt30, chargeopt32, chargeopt33, chargeopt34, chargeopt35, prohotopt36, prohotopt37, prohotopt38, prohotopt39;
 String ssid = "", password = "";
 char mqtt_server[50] = "";
@@ -52,18 +50,16 @@ PubSubClient client(ups);
 void setup()
 {
   pinMode(4 /* D2 // BQ25713 charge_OK 输出*/, 0x02);
-  pinMode(14 /* D5 //电脑开机状态LED,接到电脑上*/, 0x02);
-  pinMode(12 /* D6 //电脑开机引脚,接到电脑上*/, 0x01);
-  // pinMode(RESET_PIN, INPUT_PULLUP);
-  pinMode(5 /* D1 //机箱开机引脚,接到机箱开关 接到VCC。开机时为重设网络参数*/, 0x02);
-  pinMode(13 /* D7 //机箱开机状态LED,接到机箱led上 GND*/, 0x01);
-  // pinMode(LED_PIN, OUTPUT);
-  digitalWrite(12 /* D6 //电脑开机引脚,接到电脑上*/, 1); //控制电脑启动的引脚 上电拉高
+  pinMode(14 /* D5 // 电脑开机状态LED,接到电脑上*/, 0x02);
+  pinMode(12 /* D6 // 电脑开机引脚,接到电脑上*/, 0x01);
+  pinMode(13 /* D7 // 机箱开机引脚,接到机箱开关 接到VCC。开机时为重设网络参数*/, 0x02);
+  pinMode(15 /* D8 // 机箱开机状态LED,接到机箱led上 GND*/, 0x01);
+  digitalWrite(12 /* D6 // 电脑开机引脚,接到电脑上*/, 1); //控制电脑启动的引脚 上电拉高
   Serial.begin(57600); //初始化串口配置
   Wire.begin(0 /* D3*/, 2 /* D4*/); // 初始化IIC 通讯 并指定引脚做通讯
   delay(100);
   ReadRomBqConf();
-  if (!digitalRead(5 /* D1 //机箱开机引脚,接到机箱开关 接到VCC。开机时为重设网络参数*/)) // D8 重新配置网络参数
+  if (!digitalRead(13 /* D7 // 机箱开机引脚,接到机箱开关 接到VCC。开机时为重设网络参数*/)) // D7 重新配置网络参数
     WriteRomNetConf(20); //写网络参数到rom
   ReadRomNetConf(20); //读取网络参数
   WiFi.mode(WIFI_STA);
@@ -72,22 +68,23 @@ void setup()
 }
 void loop()
 {
-  // digitalWrite(MB_START_PIN,!digitalRead(BOX_SW_PIN));//D8上电后为0，电脑开机动作是0，外部开关接D8和VCC
-  if (digitalRead(5 /* D1 //机箱开机引脚,接到机箱开关 接到VCC。开机时为重设网络参数*/)) //外部开关触发开机
+  if (!digitalRead(13 /* D7 // 机箱开机引脚,接到机箱开关 接到VCC。开机时为重设网络参数*/)) //机箱开关触发开机
   {
     delay(50);
-    if (digitalRead(5 /* D1 //机箱开机引脚,接到机箱开关 接到VCC。开机时为重设网络参数*/))
+    if (!digitalRead(13 /* D7 // 机箱开机引脚,接到机箱开关 接到VCC。开机时为重设网络参数*/))
     {
-      digitalWrite(12 /* D6 //电脑开机引脚,接到电脑上*/, 0x0);
+      digitalWrite(12 /* D6 // 电脑开机引脚,接到电脑上*/, 0x0);
       delay(500);
-      digitalWrite(12 /* D6 //电脑开机引脚,接到电脑上*/, 0x1);
+      digitalWrite(12 /* D6 // 电脑开机引脚,接到电脑上*/, 0x1);
     }
   }
   client.loop(); // callback()调用
   if (millis() - now > 2000) //每2s执行一次
   {
     j++;
-    digitalWrite(13 /* D7 //机箱开机状态LED,接到机箱led上 GND*/, digitalRead(14 /* D5 //电脑开机状态LED,接到电脑上*/));
+    digitalWrite(15 /* D8 // 机箱开机状态LED,接到机箱led上 GND*/, digitalRead(14 /* D5 // 电脑开机状态LED,接到电脑上*/));//电脑开机状态转到机箱LED
+    Serial.print("mb led ");
+    Serial.println(digitalRead(14 /* D5 // 电脑开机状态LED,接到电脑上*/));
     if (WiFi.status() != WL_CONNECTED)
       reconnectwifi();
     if (!client.connected() && WiFi.status() == WL_CONNECTED)
@@ -120,12 +117,12 @@ void loop()
 }
 boolean mreadBQ25(byte regAddress, byte *dataVal, byte arrLen)
 {
-  Wire.beginTransmission(0x6b /*芯片IIC地址BQ25713是6b，25713b是6a*/);
+  Wire.beginTransmission(0x6b /* 芯片IIC地址BQ25713是6b，25713b是6a*/);
   Wire.write(regAddress);
   byte ack = Wire.endTransmission();
   if (ack == 0)
   {
-    Wire.requestFrom((int)0x6b /*芯片IIC地址BQ25713是6b，25713b是6a*/, (int)arrLen);
+    Wire.requestFrom((int)0x6b /* 芯片IIC地址BQ25713是6b，25713b是6a*/, (int)arrLen);
     if (Wire.available() > 0)
     {
       for (uint8_t i = 0; i < arrLen; i++)
@@ -142,7 +139,7 @@ boolean mreadBQ25(byte regAddress, byte *dataVal, byte arrLen)
 }
 boolean writeBQ25(byte regAddress, byte dataVal0, byte dataVal1)
 {
-  Wire.beginTransmission(0x6b /*芯片IIC地址BQ25713是6b，25713b是6a*/);
+  Wire.beginTransmission(0x6b /* 芯片IIC地址BQ25713是6b，25713b是6a*/);
   Wire.write(regAddress);
   Wire.write(dataVal0);
   Wire.write(dataVal1);
@@ -296,7 +293,7 @@ void ChargeStatus()
     if (dataVal[1] & 0B1000000)
     {
       Serial.println("ICO DONE Y"); // ICO 以后需要重设输入电流设置
-      writeBQ25(0x0E /* 50-6400mA /50mA offset 50mA，电流限制不是2进制组合需要转换成2进制，8位数据*/, 0x00, SET_PARA.IIn_Limt); //输入电流设置  0f 0111 1111 0x7F 0e 00000 0X0 最大电流6.4A
+      writeBQ25(0x0E /* 50-6400mA /50mA offset 50mA，电流限制不是2进制组合需要转换成2进制，8位数据*/, 0x00, SET_PARA.IIn_Limt); // 输入电流设置
       delay(10);
     }
     if (dataVal[1] & 0B100000)
@@ -441,21 +438,29 @@ void ReadRomBqConf()
   SET_PARA.VBatOff = (EEPROM.read(12) << 8) + EEPROM.read(11); // 电池关机电压
   Serial.print("bat poweroff:");
   Serial.println(SET_PARA.VBatOff);
-  Serial.println("eeprom ");
-  for (i = 0; i < 70; i++)
-  {
-    Serial.print("addr ");
-    Serial.print(i);
-    Serial.print(" : ");
-    Serial.println(EEPROM.read(i));
-  }
+  /* Serial.println("eeprom ");
+
+   for (i = 0; i < 70; i++)
+
+   {
+
+     Serial.print("addr ");
+
+     Serial.print(i);
+
+     Serial.print(" : ");
+
+     Serial.println(EEPROM.read(i));
+
+   }*/
+# 469 "d:\\code\\DC_ups\\ups.ino"
   EEPROM.end();
 }
 void WriteRomNetConf(int i) // i 为rom 开始地址
 {
   Serial.print("\nstart net config info\n ");
   EEPROM.begin(200 /* EEPROM 字节分配*/);
-  for (int j = 0; j < 200 /* EEPROM 字节分配*/; j++)
+  for (int j = 0; j < 200 /* EEPROM 字节分配*/; j++) //清空eeprom
   {
     EEPROM.write(j, 255);
     delay(10);
@@ -588,18 +593,18 @@ void ReadRomNetConf(int i)
 }
 void nascontrol()
 {
-  if (digitalRead(14 /* D5 //电脑开机状态LED,接到电脑上*/)) //如果开机
+  if (digitalRead(14 /* D5 // 电脑开机状态LED,接到电脑上*/)) //如果开机
   {
     delay(200);
-    if (digitalRead(14 /* D5 //电脑开机状态LED,接到电脑上*/)) //延时防抖 再判断是否开机
+    if (digitalRead(14 /* D5 // 电脑开机状态LED,接到电脑上*/)) //延时防抖 再判断是否开机
     {
       if ((!digitalRead(4 /* D2 // BQ25713 charge_OK 输出*/)) || (!ACstat)) //如果电源断电或有错误
       {
         if (ADC.VBAT < SET_PARA.VBatOff) //电池电压低于关机电压
         {
-          digitalWrite(12 /* D6 //电脑开机引脚,接到电脑上*/, 0x0);
+          digitalWrite(12 /* D6 // 电脑开机引脚,接到电脑上*/, 0x0);
           delay(500);
-          digitalWrite(12 /* D6 //电脑开机引脚,接到电脑上*/, 0x1);
+          digitalWrite(12 /* D6 // 电脑开机引脚,接到电脑上*/, 0x1);
           client.publish("ups/nas", "powerOn");
         }
       }
@@ -608,13 +613,13 @@ void nascontrol()
   else
   {
     delay(200);
-    if (!(digitalRead(14 /* D5 //电脑开机状态LED,接到电脑上*/))) ////延时防抖 再判断是否开机
+    if (!(digitalRead(14 /* D5 // 电脑开机状态LED,接到电脑上*/))) ////延时防抖 再判断是否开机
     {
       if (digitalRead(4 /* D2 // BQ25713 charge_OK 输出*/) && ACstat) //没有错误则开机
       {
-        digitalWrite(12 /* D6 //电脑开机引脚,接到电脑上*/, 0x0);
+        digitalWrite(12 /* D6 // 电脑开机引脚,接到电脑上*/, 0x0);
         delay(500);
-        digitalWrite(12 /* D6 //电脑开机引脚,接到电脑上*/, 0x1);
+        digitalWrite(12 /* D6 // 电脑开机引脚,接到电脑上*/, 0x1);
         client.publish("ups/nas", "powerOff");
       }
     }
@@ -665,7 +670,7 @@ void InitBQ25() //重新初始化bq25芯片配置
   SetInVoltage(11000); //最小输入电压，触发VIDPM的电压值
 
   delay(50);*/
-# 679 "d:\\code\\DC_ups\\ups.ino"
+# 676 "d:\\code\\DC_ups\\ups.ino"
   writeBQ25(0x3A /* ADC功能设置，启用还是关闭测量*/, 0x7f, 0xa0); //打开ADC，并启动连续转换
   delay(50);
   writeBQ25(0x06, 0, 0); // OTG电压为0
@@ -684,9 +689,9 @@ void callback(char *intopic, byte *payload, unsigned int length)
   {
     if ((char)payload[0] == '1')
     {
-      digitalWrite(12 /* D6 //电脑开机引脚,接到电脑上*/, 0x0);
+      digitalWrite(12 /* D6 // 电脑开机引脚,接到电脑上*/, 0x0);
       delay(500);
-      digitalWrite(12 /* D6 //电脑开机引脚,接到电脑上*/, 0x1);
+      digitalWrite(12 /* D6 // 电脑开机引脚,接到电脑上*/, 0x1);
     }
   }
   if (!strcmp(intopic, "ups/set/InitBQ")) //重新初始化芯片配置参数位默认值
@@ -826,27 +831,22 @@ void ParaPublish()
   client.publish("ups/para/MinSysV", temp);
   Serial.print("setting MinSysV is ");
   Serial.println(READ_PARA.MinSysVolt);
-
   snprintf(temp, 6, "%d", READ_PARA.MaxChargeVoltage);
   client.publish("ups/para/MaxChargeV", temp);
   Serial.print("setting MaxChargeVoltage is ");
   Serial.println(READ_PARA.MaxChargeVoltage);
-
   snprintf(temp, 6, "%d", READ_PARA.ChargeCurrent);
   client.publish("ups/para/ChargeI", temp);
   Serial.print("setting ChargeCurrent is ");
   Serial.println(READ_PARA.ChargeCurrent);
-
   snprintf(temp, 6, "%d", READ_PARA.MinInputV);
   client.publish("ups/para/MinInV", temp);
   Serial.print("setting MinInputV is ");
   Serial.println(READ_PARA.MinInputV);
-
   snprintf(temp, 6, "%d", READ_PARA.IIn_Limt);
   client.publish("ups/para/MaxInI", temp);
   Serial.print("setting IIn_Limt is ");
   Serial.println(READ_PARA.IIn_Limt);
-
   snprintf(temp, 6, "%d", READ_PARA.IIN_DPM);
   client.publish("ups/para/VIDPM", temp);
   Serial.print("setting IIN_DPM is ");
@@ -912,10 +912,10 @@ void sectohms(int tsec)
    hms[i] = 's';
 
    i++;*/
-# 920 "d:\\code\\DC_ups\\ups.ino"
+# 912 "d:\\code\\DC_ups\\ups.ino"
   hms[i] = '\0';
   client.publish("ups/uptime", hms);
   Serial.print("uptime:");
   Serial.println(hms);
 }
-// void none(int a)
+//finish

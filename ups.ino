@@ -3,22 +3,20 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #define epromsize 200     // EEPROM 字节分配
-#define BQ25713_ADDR 0x6b //芯片IIC地址BQ25713是6b，25713b是6a
+#define BQ25713_ADDR 0x6b // 芯片IIC地址BQ25713是6b，25713b是6a
 #define CHG_OK_PIN 4      // D2 // BQ25713 charge_OK 输出
-#define MB_LED_PIN 14     // D5 //电脑开机状态LED,接到电脑上
-#define MB_START_PIN 12   // D6 //电脑开机引脚,接到电脑上
-//#define RESET_PIN 5       // D1 //重设网络参数 接GND
-//#define BOX_SW_PIN 15  // D8 //机箱开机引脚,接到机箱开关 接到VCC。开机时为重设网络参数
-#define BOX_SW_PIN 5   // D1 //机箱开机引脚,接到机箱开关 接到VCC。开机时为重设网络参数
-#define BOX_LED_PIN 13 // D7 //机箱开机状态LED,接到机箱led上 GND
-//#define LED_PIN 16               // D0 //板载LED
+#define MB_LED_PIN 14     // D5 // 电脑开机状态LED,接到电脑上
+#define MB_START_PIN 12   // D6 // 电脑开机引脚,接到电脑上
+#define BOX_SW_PIN 13     // D7 // 机箱开机引脚,接到机箱开关 接到VCC。开机时为重设网络参数
+#define BOX_LED_PIN 15    // D8 // 机箱开机状态LED,接到机箱led上 GND
+//#define LED_PIN 2               // D0 //板载LED
 #define SCL 0                    // D3
 #define SDA 2                    // D4
 #define ChargerStatus_ADDR 0x20  // R 充电状态
 #define IIN_DPM_ADDR 0X24        // R 实际输入电流限制值 ICO以后要重设输入电流限制
 #define ADC_ADDR 0x26            // R 0x26-0x2D  ADC测量结果
-#define ManufacturerID_ADDR 0x2E //==40H
-#define DeviceID_ADDR 0x2F       //芯片ID 88h (BQ25713) 8Ah (BQ25713B)
+#define ManufacturerID_ADDR 0x2E // ==40H
+#define DeviceID_ADDR 0x2F       // 芯片ID 88h (BQ25713) 8Ah (BQ25713B)
 #define ChargerOption0_ADDR 0x00 //
 #define ChargerOption1_ADDR 0x30 //
 #define ChargerOption2_ADDR 0x32 //
@@ -74,16 +72,14 @@ void setup()
   pinMode(CHG_OK_PIN, INPUT_PULLUP);
   pinMode(MB_LED_PIN, INPUT_PULLUP);
   pinMode(MB_START_PIN, OUTPUT);
-  // pinMode(RESET_PIN, INPUT_PULLUP);
   pinMode(BOX_SW_PIN, INPUT_PULLUP);
   pinMode(BOX_LED_PIN, OUTPUT);
-  // pinMode(LED_PIN, OUTPUT);
   digitalWrite(MB_START_PIN, 1); //控制电脑启动的引脚 上电拉高
   Serial.begin(57600);           //初始化串口配置
   Wire.begin(SCL, SDA);          // 初始化IIC 通讯 并指定引脚做通讯
   delay(100);
   ReadRomBqConf();
-  if (!digitalRead(BOX_SW_PIN)) // D8 重新配置网络参数
+  if (!digitalRead(BOX_SW_PIN)) // D7 重新配置网络参数
     WriteRomNetConf(20);        //写网络参数到rom
   ReadRomNetConf(20);           //读取网络参数
   WiFi.mode(WIFI_STA);
@@ -92,11 +88,10 @@ void setup()
 }
 void loop()
 {
-  // digitalWrite(MB_START_PIN,!digitalRead(BOX_SW_PIN));//D8上电后为0，电脑开机动作是0，外部开关接D8和VCC
-  if (digitalRead(BOX_SW_PIN)) //外部开关触发开机
+  if (!digitalRead(BOX_SW_PIN)) //机箱开关触发开机
   {
     delay(50);
-    if (digitalRead(BOX_SW_PIN))
+    if (!digitalRead(BOX_SW_PIN))
     {
       digitalWrite(MB_START_PIN, LOW);
       delay(500);
@@ -107,7 +102,9 @@ void loop()
   if (millis() - now > 2000) //每2s执行一次
   {
     j++;
-    digitalWrite(BOX_LED_PIN, digitalRead(MB_LED_PIN));
+    digitalWrite(BOX_LED_PIN, digitalRead(MB_LED_PIN));//电脑开机状态转到机箱LED
+    Serial.print("mb led ");
+    Serial.println(digitalRead(MB_LED_PIN));
     if (WiFi.status() != WL_CONNECTED)
       reconnectwifi();
     if (!client.connected() && WiFi.status() == WL_CONNECTED)
@@ -316,7 +313,7 @@ void ChargeStatus()
     if (dataVal[1] & 0B1000000)
     {
       Serial.println("ICO DONE Y");                     // ICO 以后需要重设输入电流设置
-      writeBQ25(IIN_LIM_ADDR, 0x00, SET_PARA.IIn_Limt); //输入电流设置  0f 0111 1111 0x7F 0e 00000 0X0 最大电流6.4A
+      writeBQ25(IIN_LIM_ADDR, 0x00, SET_PARA.IIn_Limt); // 输入电流设置
       delay(10);
     }
     if (dataVal[1] & 0B100000)
@@ -461,21 +458,21 @@ void ReadRomBqConf()
   SET_PARA.VBatOff = (EEPROM.read(12) << 8) + EEPROM.read(11); // 电池关机电压
   Serial.print("bat poweroff:");
   Serial.println(SET_PARA.VBatOff);
- /* Serial.println("eeprom ");
-  for (i = 0; i < 70; i++)
-  {
-    Serial.print("addr ");
-    Serial.print(i);
-    Serial.print(" : ");
-    Serial.println(EEPROM.read(i));
-  }*/
+  /* Serial.println("eeprom ");
+   for (i = 0; i < 70; i++)
+   {
+     Serial.print("addr ");
+     Serial.print(i);
+     Serial.print(" : ");
+     Serial.println(EEPROM.read(i));
+   }*/
   EEPROM.end();
 }
 void WriteRomNetConf(int i) // i 为rom 开始地址
 {
   Serial.print("\nstart net config info\n ");
   EEPROM.begin(epromsize);
-  for (int j = 0; j < epromsize; j++)//清空eeprom
+  for (int j = 0; j < epromsize; j++) //清空eeprom
   {
     EEPROM.write(j, 255);
     delay(10);
@@ -836,27 +833,22 @@ void ParaPublish()
   client.publish("ups/para/MinSysV", temp);
   Serial.print("setting MinSysV is ");
   Serial.println(READ_PARA.MinSysVolt);
-
   snprintf(temp, 6, "%d", READ_PARA.MaxChargeVoltage);
   client.publish("ups/para/MaxChargeV", temp);
   Serial.print("setting MaxChargeVoltage is ");
   Serial.println(READ_PARA.MaxChargeVoltage);
-
   snprintf(temp, 6, "%d", READ_PARA.ChargeCurrent);
   client.publish("ups/para/ChargeI", temp);
   Serial.print("setting ChargeCurrent is ");
   Serial.println(READ_PARA.ChargeCurrent);
-
   snprintf(temp, 6, "%d", READ_PARA.MinInputV);
   client.publish("ups/para/MinInV", temp);
   Serial.print("setting MinInputV is ");
   Serial.println(READ_PARA.MinInputV);
-
   snprintf(temp, 6, "%d", READ_PARA.IIn_Limt);
   client.publish("ups/para/MaxInI", temp);
   Serial.print("setting IIn_Limt is ");
   Serial.println(READ_PARA.IIn_Limt);
-
   snprintf(temp, 6, "%d", READ_PARA.IIN_DPM);
   client.publish("ups/para/VIDPM", temp);
   Serial.print("setting IIN_DPM is ");
@@ -922,5 +914,4 @@ void sectohms(int tsec)
   Serial.print("uptime:");
   Serial.println(hms);
 }
-// void none(int a)
-
+//finish
