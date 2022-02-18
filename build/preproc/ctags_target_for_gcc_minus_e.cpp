@@ -205,7 +205,7 @@ void ADCcalc()
 }
 void ADCSerial()
 {
-  Serial.print("PIN_mV : ");
+  Serial.print("PIN_W : ");
   Serial.println(ADC.PIN);
   Serial.print("PSYS_W : ");
   Serial.println(ADC.PSYS);
@@ -241,7 +241,7 @@ void ADCpublish()
   client.publish("ups/ADC/VBAT", temp);
   snprintf(temp, 6, "%d", ADC.VSYS);
   client.publish("ups/ADC/VSYS", temp);
-  snprintf(temp, 6, "%f", 100 * (1 - 1.0 * (SET_PARA.MaxChargeVoltage - ADC.VBAT) / (SET_PARA.MaxChargeVoltage - SET_PARA.MinSysVolt))); //计算电池容量根据设置电池放电参数估算0-100%
+  snprintf(temp, 6, "%f", 100 * (1 - 1.0 * (READ_PARA.MaxChargeVoltage - ADC.VBAT) / (READ_PARA.MaxChargeVoltage - READ_PARA.MinSysVolt))); //计算电池容量根据设置电池放电参数估算0-100%
   client.publish("ups/BatQ", temp);
   if (ACstat)
     client.publish("ups/AC", "Online");
