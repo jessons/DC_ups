@@ -38,6 +38,9 @@ char mqtt_server[50] = "";
 char ups_IP[16] = "";
 char mqtt_user[30] = "";
 char mqtt_pwd[30] = "";
+uint8_t mac_addr[6];
+char mac_addr_char[18];
+char mqtt_id[10] = "ups-";
 long now, j;
 int i = 0;
 byte getADC[8], MSB, LSB, BatStatus;
@@ -86,6 +89,32 @@ void setup()
   WiFi.mode(WIFI_STA);
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
+  WiFi.macAddress(mac_addr);
+  i = 4;
+  for (int m = 4; m < 6; m++)
+  {
+    if (mac_addr[m] / 16 < 10) //计算十位，并转换成字符
+    {
+      mqtt_id[i] = mac_addr[m] / 16 + '0';
+      i++;
+    }
+    else
+    {
+      mqtt_id[i] = mac_addr[m] / 16 - 10 + 'A';
+      i++;
+    }
+    if (mac_addr[m] % 16 < 10) //计算个位，并转换成字符
+    {
+      mqtt_id[i] = mac_addr[m] % 16 + '0';
+      i++;
+    }
+    else
+    {
+      mqtt_id[i] = mac_addr[m] % 16 - 10 + 'A';
+      i++;
+    }
+    // mqtt_id[m - 4] = mac_addr_char[m];
+  }
 }
 void loop()
 {
@@ -103,6 +132,10 @@ void loop()
   if (millis() - now > 2000) //每2s执行一次
   {
     j++;
+    for (int x = 0; x < 6; x++)
+      Serial.print(mac_addr[x]);
+    Serial.println(mac_addr_char);
+    Serial.println(mqtt_id);
     digitalWrite(BOX_LED_PIN, digitalRead(MB_LED_PIN)); //电脑开机状态转到机箱LED
     if (WiFi.status() != WL_CONNECTED)
       reconnectwifi();
@@ -132,7 +165,7 @@ void loop()
       SetChargeCurrent(SET_PARA.ChargeCurrent);
     if (!(j % 60)) //大约每3分钟执行1次nascontrol函数
     {
-      if (nasoff)//判断是否上位机手动关机，上位机关机ups不再自动控制电脑开关机
+      if (nasoff) //判断是否上位机手动关机，上位机关机ups不再自动控制电脑开关机
         nascontrol();
     }
   }
@@ -420,7 +453,7 @@ void reconnectmqtt()
   Serial.print(":");
   Serial.print(mqtt_pwd);
   Serial.print("]\n");
-  if (client.connect("ups-8266", mqtt_user, mqtt_pwd))
+  if (client.connect(mqtt_id, mqtt_user, mqtt_pwd))
   {
     Serial.println("\nUPS MQTT connected");
     client.publish("ups/status", "online"); // ups上线可用
@@ -617,7 +650,7 @@ void nascontrol()
     delay(200);
     if (digitalRead(MB_LED_PIN)) //延时防抖 再判断是否开机
     {
-      if ((!digitalRead(CHG_OK_PIN)) || (!ACstat)) //如果电源断电或有错误
+      if ((!digitalRead(CHG_OK_PIN)) || (!ACstat) || (ADC.VBUS < READ_PARA.MinInputV)) //如果电源断电或有错误，输入电压过低
       {
         if (ADC.VBAT < SET_PARA.VBatOff) //电池电压低于关机电压
         {
