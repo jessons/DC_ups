@@ -39,12 +39,10 @@ char ups_IP[16] = "";
 char mqtt_user[30] = "";
 char mqtt_pwd[30] = "";
 uint8_t mac_addr[6];
-char mac_addr_char[18];
 char mqtt_id[10] = "ups-";
 long now, j;
-int i = 0;
 byte getADC[8], MSB, LSB, BatStatus;
-boolean ACstat, bqflag, nasoff;
+boolean ACstat, bqflag, isAutoStart;
 struct
 {
   float PSYS;
@@ -81,7 +79,7 @@ void setup()
   Serial.begin(57600);           //初始化串口配置
   Wire.begin(SCL, SDA);          // 初始化IIC 通讯 并指定引脚做通讯
   delay(100);
-  nasoff = true;
+ isAutoStart= true;
   ReadRomBqConf();
   if (!digitalRead(BOX_SW_PIN)) // D7 重新配置网络参数
     WriteRomNetConf(20);        //写网络参数到rom
@@ -90,8 +88,7 @@ void setup()
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
   WiFi.macAddress(mac_addr);
-  i = 4;
-  for (int m = 4; m < 6; m++)
+  for (int m = 4,i=4; m < 6; m++)
   {
     if (mac_addr[m] / 16 < 10) //计算十位，并转换成字符
     {
@@ -113,8 +110,7 @@ void setup()
       mqtt_id[i] = mac_addr[m] % 16 - 10 + 'A';
       i++;
     }
-    // mqtt_id[m - 4] = mac_addr_char[m];
-  }
+    }
 }
 void loop()
 {
@@ -132,10 +128,6 @@ void loop()
   if (millis() - now > 2000) //每2s执行一次
   {
     j++;
-    for (int x = 0; x < 6; x++)
-      Serial.print(mac_addr[x]);
-    Serial.println(mac_addr_char);
-    Serial.println(mqtt_id);
     digitalWrite(BOX_LED_PIN, digitalRead(MB_LED_PIN)); //电脑开机状态转到机箱LED
     if (WiFi.status() != WL_CONNECTED)
       reconnectwifi();
@@ -165,7 +157,7 @@ void loop()
       SetChargeCurrent(SET_PARA.ChargeCurrent);
     if (!(j % 60)) //大约每3分钟执行1次nascontrol函数
     {
-      if (nasoff) //判断是否上位机手动关机，上位机关机ups不再自动控制电脑开关机
+      if (isAutoStart) //判断是否上位机手动关机，上位机关机ups不再自动控制电脑开关机
         nascontrol();
     }
   }
@@ -298,7 +290,11 @@ void ADCpublish()
   client.publish("ups/ADC/VBAT", temp);
   snprintf(temp, 6, "%d", ADC.VSYS);
   client.publish("ups/ADC/VSYS", temp);
-  snprintf(temp, 6, "%f", 100 * (1 - 1.0 * (READ_PARA.MaxChargeVoltage - ADC.VBAT) / (READ_PARA.MaxChargeVoltage - READ_PARA.MinSysVolt))); //计算电池容量根据设置电池放电参数估算0-100%
+  float batq;
+  if(ADC.VBAT>SET_PARA.VBatOff)
+  batq=100.0*(ADC.VBAT-SET_PARA.VBatOff)/(READ_PARA.MaxChargeVoltage-SET_PARA.VBatOff);
+  else batq=0;
+  snprintf(temp, 6, "%f", batq); //计算电池容量根据设置电池放电参数估算0-100%
   client.publish("ups/BatQ", temp);
   if (ACstat)
     client.publish("ups/AC", "Online");
@@ -423,7 +419,7 @@ void ADCstatus()
 }
 void reconnectwifi()
 {
-  i = 0;
+  int i = 0;
   Serial.print("Connecting to [");
   Serial.print(ssid);
   Serial.print("]\n");
@@ -467,6 +463,7 @@ void reconnectmqtt()
     client.subscribe("ups/set/MaxInI");
     client.subscribe("ups/set/MinInV");
     client.subscribe("ups/set/VBatOff");
+     client.subscribe("ups/AutoStart");
   }
 }
 void ReadRomBqConf()
@@ -727,6 +724,17 @@ void callback(char *intopic, byte *payload, unsigned int length)
   Serial.print("]");
   for (int i = 0; i < length; i++)
     Serial.print((char)payload[i]);
+  if (!strcmp(intopic, "ups/AutoStart"))
+  {
+    if ((char)payload[0] == '1')
+    {
+     isAutoStart =true;
+    }
+    if ((char)payload[0] == '0')
+    {
+      isAutoStart = false;
+    }
+  }
   if (!strcmp(intopic, "ups/nas/Restart"))
   {
     if ((char)payload[0] == '1')
@@ -734,15 +742,13 @@ void callback(char *intopic, byte *payload, unsigned int length)
       digitalWrite(MB_START_PIN, LOW);
       delay(500);
       digitalWrite(MB_START_PIN, HIGH);
-      nasoff = false;
-    }
+         }
     if ((char)payload[0] == '0')
     {
       digitalWrite(MB_START_PIN, LOW);
       delay(500);
       digitalWrite(MB_START_PIN, HIGH);
-      nasoff = true;
-    }
+         }
   }
   if (!strcmp(intopic, "ups/set/InitBQ")) //重新初始化芯片配置参数位默认值
   {
@@ -963,4 +969,3 @@ void sectohms(int tsec)
   Serial.println(hms);
 }
 // finish
- 
