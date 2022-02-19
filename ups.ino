@@ -41,7 +41,7 @@ char mqtt_pwd[30] = "";
 long now, j;
 int i = 0;
 byte getADC[8], MSB, LSB, BatStatus;
-boolean ACstat, bqflag;
+boolean ACstat, bqflag, nasoff;
 struct
 {
   float PSYS;
@@ -78,6 +78,7 @@ void setup()
   Serial.begin(57600);           //初始化串口配置
   Wire.begin(SCL, SDA);          // 初始化IIC 通讯 并指定引脚做通讯
   delay(100);
+  nasoff = true;
   ReadRomBqConf();
   if (!digitalRead(BOX_SW_PIN)) // D7 重新配置网络参数
     WriteRomNetConf(20);        //写网络参数到rom
@@ -129,8 +130,11 @@ void loop()
       SetInLimtCurrent(SET_PARA.IIn_Limt);
     if (abs(SET_PARA.ChargeCurrent - READ_PARA.ChargeCurrent) > 100) //重新设定充电电流
       SetChargeCurrent(SET_PARA.ChargeCurrent);
-    if (!(j % 60))
-      nascontrol(); //大约每3分钟执行1次nascontrol函数
+    if (!(j % 60)) //大约每3分钟执行1次nascontrol函数
+    {
+      if (nasoff)//判断是否上位机手动关机，上位机关机ups不再自动控制电脑开关机
+        nascontrol();
+    }
   }
 }
 boolean mreadBQ25(byte regAddress, byte *dataVal, byte arrLen)
@@ -630,7 +634,7 @@ void nascontrol()
     delay(200);
     if (!(digitalRead(MB_LED_PIN))) ////延时防抖 再判断是否开机
     {
-      if (digitalRead(CHG_OK_PIN) && ACstat) //没有错误则开机
+      if (digitalRead(CHG_OK_PIN) && ACstat && (ADC.VBUS > READ_PARA.MinInputV)) //没有错误则开机,并且输入电压大于设定电压
       {
         digitalWrite(MB_START_PIN, LOW);
         delay(500);
@@ -697,6 +701,14 @@ void callback(char *intopic, byte *payload, unsigned int length)
       digitalWrite(MB_START_PIN, LOW);
       delay(500);
       digitalWrite(MB_START_PIN, HIGH);
+      nasoff = false;
+    }
+    if ((char)payload[0] == '0')
+    {
+      digitalWrite(MB_START_PIN, LOW);
+      delay(500);
+      digitalWrite(MB_START_PIN, HIGH);
+      nasoff = true;
     }
   }
   if (!strcmp(intopic, "ups/set/InitBQ")) //重新初始化芯片配置参数位默认值
@@ -918,3 +930,4 @@ void sectohms(int tsec)
   Serial.println(hms);
 }
 // finish
+ 
