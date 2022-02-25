@@ -79,16 +79,16 @@ void setup()
   Serial.begin(57600);           //初始化串口配置
   Wire.begin(SCL, SDA);          // 初始化IIC 通讯 并指定引脚做通讯
   delay(100);
- isAutoStart= true;
-  ReadRomBqConf();
-  if (!digitalRead(BOX_SW_PIN)) // D7 重新配置网络参数
+  isAutoStart = true;           //默认ups自动控制nas开关机
+  ReadRomBqConf();              // 读取芯片配置，初始化芯片参数
+  if (!digitalRead(BOX_SW_PIN)) // D7 重新配置网络参数安装（机箱开机按键）
     WriteRomNetConf(20);        //写网络参数到rom
   ReadRomNetConf(20);           //读取网络参数
   WiFi.mode(WIFI_STA);
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
   WiFi.macAddress(mac_addr);
-  for (int m = 4,i=4; m < 6; m++)
+  for (int m = 4, i = 4; m < 6; m++) //读取mac地址作为mqtt客户端id
   {
     if (mac_addr[m] / 16 < 10) //计算十位，并转换成字符
     {
@@ -110,7 +110,7 @@ void setup()
       mqtt_id[i] = mac_addr[m] % 16 - 10 + 'A';
       i++;
     }
-    }
+  }
 }
 void loop()
 {
@@ -139,12 +139,12 @@ void loop()
       client.publish("ups/IP", ups_IP);
     }
     now = millis();
-    sectohms(now / 1000);
+    sectohms(now / 1000); //计算开始时间
     ChargeStatus();
     ReadSetPara();
-    ParaPublish();
+    ParaPublish(); //上传设置bq25参数
     ADCstatus();
-    bqflag = mreadBQ25(ADC_ADDR, getADC, 8); // adc状态监控
+    bqflag = mreadBQ25(ADC_ADDR, getADC, 8); // 读取adc测量值
     if (bqflag)
     {
       ADCcalc();
@@ -291,9 +291,10 @@ void ADCpublish()
   snprintf(temp, 6, "%d", ADC.VSYS);
   client.publish("ups/ADC/VSYS", temp);
   float batq;
-  if(ADC.VBAT>SET_PARA.VBatOff)
-  batq=100.0*(ADC.VBAT-SET_PARA.VBatOff)/(READ_PARA.MaxChargeVoltage-SET_PARA.VBatOff);
-  else batq=0;
+  if (ADC.VBAT > SET_PARA.VBatOff)
+    batq = 100.0 * (ADC.VBAT - SET_PARA.VBatOff) / (READ_PARA.MaxChargeVoltage - SET_PARA.VBatOff);
+  else
+    batq = 0;
   snprintf(temp, 6, "%f", batq); //计算电池容量根据设置电池放电参数估算0-100%
   client.publish("ups/BatQ", temp);
   if (ACstat)
@@ -463,7 +464,7 @@ void reconnectmqtt()
     client.subscribe("ups/set/MaxInI");
     client.subscribe("ups/set/MinInV");
     client.subscribe("ups/set/VBatOff");
-     client.subscribe("ups/AutoStart");
+    client.subscribe("ups/AutoStart");
   }
 }
 void ReadRomBqConf()
@@ -495,14 +496,6 @@ void ReadRomBqConf()
   SET_PARA.VBatOff = (EEPROM.read(12) << 8) + EEPROM.read(11); // 电池关机电压
   Serial.print("bat poweroff:");
   Serial.println(SET_PARA.VBatOff);
-  /* Serial.println("eeprom ");
-   for (i = 0; i < 70; i++)
-   {
-     Serial.print("addr ");
-     Serial.print(i);
-     Serial.print(" : ");
-     Serial.println(EEPROM.read(i));
-   }*/
   EEPROM.end();
 }
 void WriteRomNetConf(int i) // i 为rom 开始地址
@@ -700,22 +693,11 @@ void InitBQ25() //重新初始化bq25芯片配置
   delay(50);
   writeBQ25(ProchotOption1_ADDR, prohotopt38, prohotopt39);
   delay(50);
-  /*SetInLimtCurrent(3500); //输入电流设置 默认3.2A
-  delay(50);
-  SetMinSysVoltage(11000); //最小系统电压3s对应9v
-  delay(100);
-  SetMaxChargeVoltage(12600); //最大充电电压
-  delay(50);
-  SetChargeCurrent(1500); //充电电流
-  delay(50);
-  SetInVoltage(11000); //最小输入电压，触发VIDPM的电压值
-  delay(50);*/
   writeBQ25(ADCENS_ADDR, 0x7f, 0xa0); //打开ADC，并启动连续转换
   delay(50);
   writeBQ25(0x06, 0, 0); // OTG电压为0
   delay(50);
   writeBQ25(0x08, 0, 0); // OTG电流为0，不使用OTG功能
-  // SET_PARA.VBatOff = 12600;
 }
 void callback(char *intopic, byte *payload, unsigned int length)
 {
@@ -728,7 +710,7 @@ void callback(char *intopic, byte *payload, unsigned int length)
   {
     if ((char)payload[0] == '1')
     {
-     isAutoStart =true;
+      isAutoStart = true;
     }
     if ((char)payload[0] == '0')
     {
@@ -742,13 +724,13 @@ void callback(char *intopic, byte *payload, unsigned int length)
       digitalWrite(MB_START_PIN, LOW);
       delay(500);
       digitalWrite(MB_START_PIN, HIGH);
-         }
+    }
     if ((char)payload[0] == '0')
     {
       digitalWrite(MB_START_PIN, LOW);
       delay(500);
       digitalWrite(MB_START_PIN, HIGH);
-         }
+    }
   }
   if (!strcmp(intopic, "ups/set/InitBQ")) //重新初始化芯片配置参数位默认值
   {
