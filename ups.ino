@@ -31,8 +31,19 @@
 #define InputVoltage_ADDR 0x0A     // 3200-19584mV /64mV offset 3200，低于这个值就引发vidpm
 #define MinSysVolt_ADDR 0x0C       // 1024-16128mV /256mV offset 0
 #define IIN_LIM_ADDR 0x0E          // 50-6400mA /50mA offset 50mA，电流限制不是2进制组合需要转换成2进制，8位数据
-
-byte chargeopt01, chargeopt00, chargeopt31, chargeopt30, chargeopt32, chargeopt33, chargeopt34, chargeopt35, prohotopt36, prohotopt37, prohotopt38, prohotopt39;
+#define chargeopt00 0x0e          // 0000 1110=0e
+#define chargeopt01 0x87          // 1000 0111=87
+#define chargeopt30 0x01          // 0000 0001=1
+#define chargeopt31 0x93          // 1001 0011=93
+#define chargeopt32 0x3f          // 0011 1111=3f
+#define chargeopt33 0x02          // 0000 0010=2
+#define chargeopt34 0x31          // 0011 0001=31
+#define chargeopt35 0x08          // 0000 1000=8
+#define prohotopt36 0x6a
+#define prohotopt37 0x4a
+#define prohotopt38 0
+#define prohotopt39 0x81
+//byte chargeopt01, chargeopt00, chargeopt31, chargeopt30, chargeopt32, chargeopt33, chargeopt34, chargeopt35, prohotopt36, prohotopt37, prohotopt38, prohotopt39;
 String ssid = "", password = "";
 char mqtt_server[50] = "";
 char ups_IP[16] = "";
@@ -40,6 +51,8 @@ char mqtt_user[30] = "";
 char mqtt_pwd[30] = "";
 uint8_t mac_addr[6];
 char mqtt_id[10] = "ups-";
+char topic_prefix[10];
+char topic[40];
 long now, j;
 byte getADC[8], MSB, LSB, BatStatus;
 boolean ACstat, bqflag, isAutoStart;
@@ -135,8 +148,12 @@ void loop()
       reconnectmqtt();
     if (client.connected())
     {
-      client.publish("ups/status", "online"); // ups上线可用
-      client.publish("ups/IP", ups_IP);
+      strcpy(topic, topic_prefix);
+      strcat(topic, "/status");
+      client.publish(topic, "online"); // ups上线可用
+      strcpy(topic, topic_prefix);
+      strcat(topic, "/IP");
+      client.publish(topic, ups_IP);
     }
     now = millis();
     sectohms(now / 1000); //计算开始时间
@@ -275,42 +292,64 @@ void ADCpublish()
 {
   char temp[8] = "";
   snprintf(temp, 6, "%f", ADC.PIN);
-  client.publish("ups/ADC/PIN", temp);
+  strcpy(topic, topic_prefix);
+  strcat(topic, "/ADC/PIN");
+  client.publish(topic, temp);
   snprintf(temp, 6, "%f", ADC.PSYS);
-  client.publish("ups/ADC/PSYS", temp);
+  strcpy(topic, topic_prefix);
+  strcat(topic, "/ADC/PSYS");
+  client.publish(topic, temp);
   snprintf(temp, 6, "%d", ADC.VBUS);
-  client.publish("ups/ADC/VBUS", temp);
+  strcpy(topic, topic_prefix);
+  strcat(topic, "/ADC/VBUS");
+  client.publish(topic, temp);
   snprintf(temp, 6, "%d", ADC.ICHG);
-  client.publish("ups/ADC/ICHG", temp);
+  strcpy(topic, topic_prefix);
+  strcat(topic, "/ADC/ICHG");
+  client.publish(topic, temp);
   snprintf(temp, 6, "%d", ADC.IDCHG);
-  client.publish("ups/ADC/IDCHG", temp);
+  strcpy(topic, topic_prefix);
+  strcat(topic, "/ADC/IDCHG");
+  client.publish(topic, temp);
   snprintf(temp, 6, "%d", ADC.IIN);
-  client.publish("ups/ADC/IIN", temp);
+  strcpy(topic, topic_prefix);
+  strcat(topic, "/ADC/IIN");
+  client.publish(topic, temp);
   snprintf(temp, 6, "%d", ADC.VBAT);
-  client.publish("ups/ADC/VBAT", temp);
+  strcpy(topic, topic_prefix);
+  strcat(topic, "//ADC/VBAT");
+  client.publish(topic, temp);
   snprintf(temp, 6, "%d", ADC.VSYS);
-  client.publish("ups/ADC/VSYS", temp);
+  strcpy(topic, topic_prefix);
+  strcat(topic, "/ADC/VSYS");
+  client.publish(topic, temp);
   float batq;
   if (ADC.VBAT > SET_PARA.VBatOff)
     batq = 100.0 * (ADC.VBAT - SET_PARA.VBatOff) / (READ_PARA.MaxChargeVoltage - SET_PARA.VBatOff);
   else
     batq = 0;
   snprintf(temp, 6, "%f", batq); //计算电池容量根据设置电池放电参数估算0-100%
-  client.publish("ups/BatQ", temp);
+  strcpy(topic, topic_prefix);
+  strcat(topic, "/BatQ");
+  client.publish(topic, temp);
+  strcpy(topic, topic_prefix);
+  strcat(topic, "/AC");
   if (ACstat)
-    client.publish("ups/AC", "Online");
+    client.publish(topic, "Online");
   else
-    client.publish("ups/AC", "Offline");
+    client.publish(topic, "Offline");
+  strcpy(topic, topic_prefix);
+  strcat(topic, "/battery");
   if (ADC.IDCHG > 80)
-    client.publish("ups/battery", "discharge");
+    client.publish(topic, "Discharge");
   else
   {
     if (BatStatus == 2)
-      client.publish("ups/battery", "fast charge");
+      client.publish(topic, "Fast Charge");
     if (BatStatus == 1)
-      client.publish("ups/battery", "pre charge");
+      client.publish(topic, "Pre Charge");
     if (BatStatus == 0)
-      client.publish("ups/battery", "normal");
+      client.publish(topic, "Normal");
   }
 }
 void setBytes(uint16_t value, uint16_t minVal, uint16_t maxVal, uint16_t offset, uint16_t resVal)
@@ -334,9 +373,13 @@ void ChargeStatus()
   if (bqACK)
   {
     snprintf(temp, 6, "%d", dataVal[0]);
-    client.publish("ups/ChargeStatus0", temp);
+    strcpy(topic, topic_prefix);
+    strcat(topic, "/ChargeStatus0");
+    client.publish(topic, temp);
     snprintf(temp, 6, "%d", dataVal[1]);
-    client.publish("ups/ChargeStatus1", temp);
+    strcpy(topic, topic_prefix);
+    strcat(topic, "/ChargeStatus1");
+    client.publish(topic, temp);
     if (dataVal[1] & 0B10000000)
     {
       Serial.println("AC OnLine");
@@ -453,18 +496,40 @@ void reconnectmqtt()
   if (client.connect(mqtt_id, mqtt_user, mqtt_pwd))
   {
     Serial.println("\nUPS MQTT connected");
-    client.publish("ups/status", "online"); // ups上线可用
+    strcpy(topic, topic_prefix);
+    strcat(topic, "/status");
+    client.publish(topic, "Online"); // ups上线可用
     sprintf(ups_IP, "%d.%d.%d.%d", WiFi.localIP()[0], WiFi.localIP()[1], WiFi.localIP()[2], WiFi.localIP()[3]);
-    client.publish("ups/IP", ups_IP);
-    client.subscribe("ups/set/InitBQ");
-    client.subscribe("ups/set/ChargeI");
-    client.subscribe("ups/set/MaxChargeV");
-    client.subscribe("ups/set/MinSysV");
-    client.subscribe("ups/nas/Restart");
-    client.subscribe("ups/set/MaxInI");
-    client.subscribe("ups/set/MinInV");
-    client.subscribe("ups/set/VBatOff");
-    client.subscribe("ups/AutoStart");
+    strcpy(topic, topic_prefix);
+    strcat(topic, "/IP");
+    client.publish(topic, ups_IP);
+    strcpy(topic, topic_prefix);
+    strcat(topic, "/set/InitBQ");
+    client.subscribe(topic);
+    strcpy(topic, topic_prefix);
+    strcat(topic, "/set/ChargeI");
+    client.subscribe(topic);
+    strcpy(topic, topic_prefix);
+    strcat(topic, "/set/MaxChargeV");
+    client.subscribe(topic);
+    strcpy(topic, topic_prefix);
+    strcat(topic, "/set/MinSysV");
+    client.subscribe(topic);
+    strcpy(topic, topic_prefix);
+    strcat(topic, "/nas/Restart");
+    client.subscribe(topic);
+    strcpy(topic, topic_prefix);
+    strcat(topic, "/set/MaxInI");
+    client.subscribe(topic);
+    strcpy(topic, topic_prefix);
+    strcat(topic, "/set/MinInV");
+    client.subscribe(topic);
+    strcpy(topic, topic_prefix);
+    strcat(topic, "/set/VBatOff");
+    client.subscribe(topic);
+    strcpy(topic, topic_prefix);
+    strcat(topic, "/AutoStart");
+    client.subscribe(topic);
   }
 }
 void ReadRomBqConf()
@@ -570,6 +635,17 @@ void WriteRomNetConf(int i) // i 为rom 开始地址
   }
   EEPROM.write(i, '\0');
   i++;
+  Serial.print("\nplease input mqtt topic prefix:(less 15 letter)\n ");
+  while (!Serial.available())
+  {
+  }
+  delay(100);
+  while (Serial.available() > 0)
+  {
+    EEPROM.write(i, Serial.read());
+    i++;
+  }
+  EEPROM.write(i, '\0');
   EEPROM.end();
 }
 void ReadRomNetConf(int i)
@@ -615,6 +691,14 @@ void ReadRomNetConf(int i)
     i++;
     j++;
   } while (ch != '\0');
+  j = 0;
+  do
+  {
+    ch = EEPROM.read(i);
+    topic_prefix[j] = ch;
+    i++;
+    j++;
+  } while (ch != '\0');
   EEPROM.end();
   Serial.print("\nyou input ssid:[");
   Serial.print(ssid);
@@ -630,6 +714,9 @@ void ReadRomNetConf(int i)
   Serial.print("]\n");
   Serial.print("you input mqtt password:[");
   Serial.print(mqtt_pwd);
+  Serial.print("]\n");
+  Serial.print("you input mqtt topic prefix:[");
+  Serial.print(topic_prefix);
   Serial.print("]\n");
   Serial.println("output finish! ");
 }
@@ -647,7 +734,9 @@ void nascontrol()
           digitalWrite(MB_START_PIN, LOW);
           delay(500);
           digitalWrite(MB_START_PIN, HIGH);
-          client.publish("ups/nas", "powerOn");
+          strcpy(topic, topic_prefix);
+          strcat(topic, "/nas");
+          client.publish(topic, "powerOn");
         }
       }
     }
@@ -662,25 +751,16 @@ void nascontrol()
         digitalWrite(MB_START_PIN, LOW);
         delay(500);
         digitalWrite(MB_START_PIN, HIGH);
-        client.publish("ups/nas", "powerOff");
+        strcpy(topic, topic_prefix);
+        strcat(topic, "/nas");
+        client.publish(topic, "powerOff");
       }
     }
   }
 }
 void InitBQ25() //重新初始化bq25芯片配置
 {
-  chargeopt00 = 0x0e; // 0000 1110=0e
-  chargeopt01 = 0x87; // 1000 0111=87
-  chargeopt30 = 0x01; // 0000 0001=1
-  chargeopt31 = 0x93; // 1001 0011=93
-  chargeopt32 = 0x3f; // 0011 1111=3f
-  chargeopt33 = 0x02; // 0000 0010=2
-  chargeopt34 = 0x31; // 0011 0001=31
-  chargeopt35 = 0x08; // 0000 1000=8
-  prohotopt36 = 0x6a;
-  prohotopt37 = 0x4a;
-  prohotopt38 = 0;
-  prohotopt39 = 0x81;
+
   writeBQ25(ChargerOption0_ADDR, chargeopt00, chargeopt01);
   delay(50);
   writeBQ25(ChargerOption1_ADDR, chargeopt30, chargeopt31);
@@ -946,8 +1026,10 @@ void sectohms(int tsec)
    hms[i] = 's';
    i++;*/
   hms[i] = '\0';
-  client.publish("ups/uptime", hms);
+  strcpy(topic, topic_prefix);
+  strcat(topic, "/uptime");
+  client.publish(topic, hms);
   Serial.print("uptime:");
   Serial.println(hms);
 }
-// finish
+// finish 
