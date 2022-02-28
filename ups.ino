@@ -10,19 +10,19 @@
 #define BOX_SW_PIN 13     // D7 // 机箱开机引脚,接到机箱开关 接到VCC。开机时为重设网络参数
 #define BOX_LED_PIN 15    // D8 // 机箱开机状态LED,接到机箱led上 GND
 //#define LED_PIN 2               // D0 //板载LED
-#define SCL 0                    // D3
-#define SDA 2                    // D4
-#define ChargerStatus_ADDR 0x20  // R 充电状态
-#define IIN_DPM_ADDR 0X24        // R 实际输入电流限制值 ICO以后要重设输入电流限制
-#define ADC_ADDR 0x26            // R 0x26-0x2D  ADC测量结果
-#define ManufacturerID_ADDR 0x2E // ==40H
-#define DeviceID_ADDR 0x2F       // 芯片ID 88h (BQ25713) 8Ah (BQ25713B)
-#define ChargerOption0_ADDR 0x00 //
-#define ChargerOption1_ADDR 0x30 //
-#define ChargerOption2_ADDR 0x32 //
-#define ChargerOption3_ADDR 0x34 //
-#define ProchotOption0_ADDR 0X36
-#define ProchotOption1_ADDR 0X38
+#define SCL 0                      // D3
+#define SDA 2                      // D4
+#define ChargerStatus_ADDR 0x20    // R 充电状态
+#define IIN_DPM_ADDR 0X24          // R 实际输入电流限制值 ICO以后要重设输入电流限制
+#define ADC_ADDR 0x26              // R 0x26-0x2D  ADC测量结果
+#define ManufacturerID_ADDR 0x2E   // ==40H
+#define DeviceID_ADDR 0x2F         // 芯片ID 88h (BQ25713) 8Ah (BQ25713B)
+#define ChargerOption0_ADDR 0x00   //
+#define ChargerOption1_ADDR 0x30   //
+#define ChargerOption2_ADDR 0x32   //
+#define ChargerOption3_ADDR 0x34   //
+#define ProchotOption0_ADDR 0X36   //
+#define ProchotOption1_ADDR 0X38   //
 #define ADCENS_ADDR 0x3A           // ADC功能设置，启用还是关闭测量
 #define ChargeCurrent_ADDR 0x02    // 0-8128mA /64mA offset 0
 #define MaxChargeVoltage_ADDR 0x04 // 1024-19200mV /8mV offset 0
@@ -31,19 +31,19 @@
 #define InputVoltage_ADDR 0x0A     // 3200-19584mV /64mV offset 3200，低于这个值就引发vidpm
 #define MinSysVolt_ADDR 0x0C       // 1024-16128mV /256mV offset 0
 #define IIN_LIM_ADDR 0x0E          // 50-6400mA /50mA offset 50mA，电流限制不是2进制组合需要转换成2进制，8位数据
-#define chargeopt00 0x0e          // 0000 1110=0e
-#define chargeopt01 0x87          // 1000 0111=87
-#define chargeopt30 0x01          // 0000 0001=1
-#define chargeopt31 0x93          // 1001 0011=93
-#define chargeopt32 0x3f          // 0011 1111=3f
-#define chargeopt33 0x02          // 0000 0010=2
-#define chargeopt34 0x31          // 0011 0001=31
-#define chargeopt35 0x08          // 0000 1000=8
+#define chargeopt00 0x0e           // 0000 1110=0e
+#define chargeopt01 0x87           // 1000 0111=87
+#define chargeopt30 0x01           // 0000 0001=1
+#define chargeopt31 0x93           // 1001 0011=93
+#define chargeopt32 0x3f           // 0011 1111=3f
+#define chargeopt33 0x02           // 0000 0010=2
+#define chargeopt34 0x31           // 0011 0001=31
+#define chargeopt35 0x08           // 0000 1000=8
 #define prohotopt36 0x6a
 #define prohotopt37 0x4a
 #define prohotopt38 0
 #define prohotopt39 0x81
-//byte chargeopt01, chargeopt00, chargeopt31, chargeopt30, chargeopt32, chargeopt33, chargeopt34, chargeopt35, prohotopt36, prohotopt37, prohotopt38, prohotopt39;
+// byte chargeopt01, chargeopt00, chargeopt31, chargeopt30, chargeopt32, chargeopt33, chargeopt34, chargeopt35, prohotopt36, prohotopt37, prohotopt38, prohotopt39;
 String ssid = "", password = "";
 char mqtt_server[50] = "";
 char ups_IP[16] = "";
@@ -736,7 +736,7 @@ void nascontrol()
           digitalWrite(MB_START_PIN, HIGH);
           strcpy(topic, topic_prefix);
           strcat(topic, "/nas");
-          client.publish(topic, "powerOn");
+          client.publish(topic, "PowerOn");
         }
       }
     }
@@ -753,14 +753,13 @@ void nascontrol()
         digitalWrite(MB_START_PIN, HIGH);
         strcpy(topic, topic_prefix);
         strcat(topic, "/nas");
-        client.publish(topic, "powerOff");
+        client.publish(topic, "PowerOff");
       }
     }
   }
 }
 void InitBQ25() //重新初始化bq25芯片配置
 {
-
   writeBQ25(ChargerOption0_ADDR, chargeopt00, chargeopt01);
   delay(50);
   writeBQ25(ChargerOption1_ADDR, chargeopt30, chargeopt31);
@@ -786,7 +785,9 @@ void callback(char *intopic, byte *payload, unsigned int length)
   Serial.print("]");
   for (int i = 0; i < length; i++)
     Serial.print((char)payload[i]);
-  if (!strcmp(intopic, "ups/AutoStart"))
+  strcpy(topic, topic_prefix);
+  strcat(topic, "/AutoStart");
+  if (!strcmp(intopic, topic))
   {
     if ((char)payload[0] == '1')
     {
@@ -797,7 +798,9 @@ void callback(char *intopic, byte *payload, unsigned int length)
       isAutoStart = false;
     }
   }
-  if (!strcmp(intopic, "ups/nas/Restart"))
+  strcpy(topic, topic_prefix);
+  strcat(topic, "/nas/Restart");
+  if (!strcmp(intopic, topic))
   {
     if ((char)payload[0] == '1')
     {
@@ -812,14 +815,18 @@ void callback(char *intopic, byte *payload, unsigned int length)
       digitalWrite(MB_START_PIN, HIGH);
     }
   }
-  if (!strcmp(intopic, "ups/set/InitBQ")) //重新初始化芯片配置参数位默认值
+  strcpy(topic, topic_prefix);
+  strcat(topic, "/set/InitBQ");
+  if (!strcmp(intopic, topic)) //重新初始化芯片配置参数位默认值
   {
     if ((char)payload[0] == '1')
     {
       InitBQ25();
     }
   }
-  if (!strcmp(intopic, "ups/set/ChargeI")) //充电电流
+  strcpy(topic, topic_prefix);
+  strcat(topic, "/set/ChargeI");
+  if (!strcmp(intopic, topic)) //充电电流
   {
     unsigned int c = 0;
     for (int i = 0; i < length; i++)
@@ -835,7 +842,9 @@ void callback(char *intopic, byte *payload, unsigned int length)
     SET_PARA.ChargeCurrent = c / 64 * 64; //最小充电电流64ma
     SetChargeCurrent(c);
   }
-  if (!strcmp(intopic, "ups/set/MaxChargeV")) //最大充电电压
+  strcpy(topic, topic_prefix);
+  strcat(topic, "/set/MaxChargeV");
+  if (!strcmp(intopic, topic)) //最大充电电压
   {
     unsigned int c = 0;
     for (int i = 0; i < length; i++)
@@ -850,7 +859,9 @@ void callback(char *intopic, byte *payload, unsigned int length)
     EEPROM.end();
     SetMaxChargeVoltage(12600); //最大充电电压
   }
-  if (!strcmp(intopic, "ups/set/MinSysV")) //最小系统电压
+  strcpy(topic, topic_prefix);
+  strcat(topic, "/set/MinSysV");
+  if (!strcmp(intopic, topic)) //最小系统电压
   {
     unsigned int c = 0;
     for (int i = 0; i < length; i++)
@@ -865,7 +876,9 @@ void callback(char *intopic, byte *payload, unsigned int length)
     EEPROM.write(6, c >> 8);
     EEPROM.end();
   }
-  if (!strcmp(intopic, "ups/set/MinInV")) //输入电压设置
+  strcpy(topic, topic_prefix);
+  strcat(topic, "/set/MinInV");
+  if (!strcmp(intopic, topic)) //输入电压设置
   {
     unsigned int c = 0;
     for (int i = 0; i < length; i++)
@@ -880,7 +893,9 @@ void callback(char *intopic, byte *payload, unsigned int length)
     EEPROM.write(8, c >> 8);
     EEPROM.end();
   }
-  if (!strcmp(intopic, "ups/set/MaxInI")) //最大输入电流
+  strcpy(topic, topic_prefix);
+  strcat(topic, "set/MaxInI");
+  if (!strcmp(intopic, topic)) //最大输入电流
   {
     unsigned int c = 0;
     for (int i = 0; i < length; i++)
@@ -896,7 +911,9 @@ void callback(char *intopic, byte *payload, unsigned int length)
     SET_PARA.IIn_Limt = c;
     SetInLimtCurrent(c); //输入电流设置  0f 0111 1111 0x7F 0e 00000 0X0 最大电流6.35A
   }
-  if (!strcmp(intopic, "ups/set/VBatOff")) //电池关机电压,电源不在线时
+  strcpy(topic, topic_prefix);
+  strcat(topic, "/set/VBatOff");
+  if (!strcmp(intopic, topic)) //电池关机电压,电源不在线时
   {
     unsigned int c = 0;
     for (int i = 0; i < length; i++)
@@ -946,27 +963,39 @@ void ParaPublish()
 {
   char temp[8] = "";
   snprintf(temp, 6, "%d", READ_PARA.MinSysVolt);
-  client.publish("ups/para/MinSysV", temp);
+  strcpy(topic, topic_prefix);
+  strcat(topic, "/para/MinSysV");
+  client.publish(topic, temp);
   Serial.print("setting MinSysV is ");
   Serial.println(READ_PARA.MinSysVolt);
   snprintf(temp, 6, "%d", READ_PARA.MaxChargeVoltage);
-  client.publish("ups/para/MaxChargeV", temp);
+  strcpy(topic, topic_prefix);
+  strcat(topic, "/para/MaxChargeV");
+  client.publish(topic, temp);
   Serial.print("setting MaxChargeVoltage is ");
   Serial.println(READ_PARA.MaxChargeVoltage);
   snprintf(temp, 6, "%d", READ_PARA.ChargeCurrent);
-  client.publish("ups/para/ChargeI", temp);
+  strcpy(topic, topic_prefix);
+  strcat(topic, "/para/ChargeI");
+  client.publish(topic, temp);
   Serial.print("setting ChargeCurrent is ");
   Serial.println(READ_PARA.ChargeCurrent);
   snprintf(temp, 6, "%d", READ_PARA.MinInputV);
-  client.publish("ups/para/MinInV", temp);
+  strcpy(topic, topic_prefix);
+  strcat(topic, "/para/MinInV");
+  client.publish(topic, temp);
   Serial.print("setting MinInputV is ");
   Serial.println(READ_PARA.MinInputV);
   snprintf(temp, 6, "%d", READ_PARA.IIn_Limt);
-  client.publish("ups/para/MaxInI", temp);
+  strcpy(topic, topic_prefix);
+  strcat(topic, "/para/MaxInI");
+  client.publish(topic, temp);
   Serial.print("setting IIn_Limt is ");
   Serial.println(READ_PARA.IIn_Limt);
   snprintf(temp, 6, "%d", READ_PARA.IIN_DPM);
-  client.publish("ups/para/VIDPM", temp);
+  strcpy(topic, topic_prefix);
+  strcat(topic, "/para/VIDPM");
+  client.publish(topic, temp);
   Serial.print("setting IIN_DPM is ");
   Serial.println(READ_PARA.IIN_DPM);
 }
@@ -1032,4 +1061,5 @@ void sectohms(int tsec)
   Serial.print("uptime:");
   Serial.println(hms);
 }
-// finish 
+
+// finish
