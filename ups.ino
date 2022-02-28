@@ -150,7 +150,7 @@ void loop()
     {
       strcpy(topic, topic_prefix);
       strcat(topic, "/status");
-      client.publish(topic, "online"); // ups上线可用
+      client.publish(topic, "Online"); // ups上线可用
       strcpy(topic, topic_prefix);
       strcat(topic, "/IP");
       client.publish(topic, ups_IP);
@@ -797,6 +797,7 @@ void callback(char *intopic, byte *payload, unsigned int length)
     {
       isAutoStart = false;
     }
+    //Serial.println("/AutoStart");
   }
   strcpy(topic, topic_prefix);
   strcat(topic, "/nas/Restart");
@@ -814,6 +815,7 @@ void callback(char *intopic, byte *payload, unsigned int length)
       delay(500);
       digitalWrite(MB_START_PIN, HIGH);
     }
+    //Serial.println( "/nas/Restart");
   }
   strcpy(topic, topic_prefix);
   strcat(topic, "/set/InitBQ");
@@ -823,6 +825,7 @@ void callback(char *intopic, byte *payload, unsigned int length)
     {
       InitBQ25();
     }
+    //Serial.println("/set/InitBQ");
   }
   strcpy(topic, topic_prefix);
   strcat(topic, "/set/ChargeI");
@@ -841,6 +844,7 @@ void callback(char *intopic, byte *payload, unsigned int length)
     EEPROM.end();
     SET_PARA.ChargeCurrent = c / 64 * 64; //最小充电电流64ma
     SetChargeCurrent(c);
+   // Serial.println("/set/ChargeI");
   }
   strcpy(topic, topic_prefix);
   strcat(topic, "/set/MaxChargeV");
@@ -858,6 +862,7 @@ void callback(char *intopic, byte *payload, unsigned int length)
     EEPROM.write(4, c >> 8);
     EEPROM.end();
     SetMaxChargeVoltage(12600); //最大充电电压
+    //Serial.println("/set/MaxChargeV");
   }
   strcpy(topic, topic_prefix);
   strcat(topic, "/set/MinSysV");
@@ -875,6 +880,7 @@ void callback(char *intopic, byte *payload, unsigned int length)
     EEPROM.write(5, c & 0xff);
     EEPROM.write(6, c >> 8);
     EEPROM.end();
+    //Serial.println("/set/MinSysV");
   }
   strcpy(topic, topic_prefix);
   strcat(topic, "/set/MinInV");
@@ -892,9 +898,10 @@ void callback(char *intopic, byte *payload, unsigned int length)
     EEPROM.write(7, c & 0xff);
     EEPROM.write(8, c >> 8);
     EEPROM.end();
+    //Serial.println("/set/MinInV");
   }
   strcpy(topic, topic_prefix);
-  strcat(topic, "set/MaxInI");
+  strcat(topic, "/set/MaxInI");
   if (!strcmp(intopic, topic)) //最大输入电流
   {
     unsigned int c = 0;
@@ -910,6 +917,7 @@ void callback(char *intopic, byte *payload, unsigned int length)
     EEPROM.end();
     SET_PARA.IIn_Limt = c;
     SetInLimtCurrent(c); //输入电流设置  0f 0111 1111 0x7F 0e 00000 0X0 最大电流6.35A
+    //Serial.println( "/set/MaxInI");
   }
   strcpy(topic, topic_prefix);
   strcat(topic, "/set/VBatOff");
@@ -927,6 +935,7 @@ void callback(char *intopic, byte *payload, unsigned int length)
     EEPROM.write(11, c & 0xff);
     EEPROM.write(12, c >> 8);
     EEPROM.end();
+    //Serial.println("/set/VBatOff");
   }
 }
 void ReadSetPara()
