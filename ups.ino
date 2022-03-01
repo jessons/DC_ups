@@ -317,7 +317,7 @@ void ADCpublish()
   client.publish(topic, temp);
   snprintf(temp, 6, "%d", ADC.VBAT);
   strcpy(topic, topic_prefix);
-  strcat(topic, "//ADC/VBAT");
+  strcat(topic, "/ADC/VBAT");
   client.publish(topic, temp);
   snprintf(temp, 6, "%d", ADC.VSYS);
   strcpy(topic, topic_prefix);
@@ -861,7 +861,7 @@ void callback(char *intopic, byte *payload, unsigned int length)
     EEPROM.write(3, c & 0xff);
     EEPROM.write(4, c >> 8);
     EEPROM.end();
-    SetMaxChargeVoltage(12600); //最大充电电压
+    SetMaxChargeVoltage(c); //最大充电电压
     //Serial.println("/set/MaxChargeV");
   }
   strcpy(topic, topic_prefix);
