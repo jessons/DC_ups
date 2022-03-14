@@ -3,7 +3,7 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #define epromsize 200     // EEPROM 字节分配
-#define BQ25713_ADDR 0x6b // 芯片IIC地址BQ25713是6b，25713b是6a
+#define BQ25713_ADDR 0x6a // 芯片IIC地址BQ25713是6b，25713b是6a
 #define CHG_OK_PIN 4      // D2 // BQ25713 charge_OK 输出
 #define MB_LED_PIN 14     // D5 // 电脑开机状态LED,接到电脑上
 #define MB_START_PIN 12   // D6 // 电脑开机引脚,接到电脑上
@@ -41,7 +41,7 @@
 #define chargeopt35 0x08           // 0000 1000=8
 #define prohotopt36 0x6a
 #define prohotopt37 0x4a
-#define prohotopt38 0
+#define prohotopt38 0x00
 #define prohotopt39 0x81
 // byte chargeopt01, chargeopt00, chargeopt31, chargeopt30, chargeopt32, chargeopt33, chargeopt34, chargeopt35, prohotopt36, prohotopt37, prohotopt38, prohotopt39;
 String ssid = "", password = "";
@@ -54,7 +54,7 @@ char mqtt_id[10] = "ups-";
 char topic_prefix[10];
 char topic[40];
 long now, j;
-byte getADC[8], MSB, LSB, BatStatus;
+byte getADC[8], H8b, L8b, BatStatus;
 boolean ACstat, bqflag, isAutoStart;
 struct
 {
@@ -127,7 +127,7 @@ void setup()
 }
 void loop()
 {
-  if (!digitalRead(BOX_SW_PIN)) //机箱开关触发开机
+  /*if (!digitalRead(BOX_SW_PIN)) //机箱开关触发开机，可以改变接线不使用这段代码
   {
     delay(50);
     if (!digitalRead(BOX_SW_PIN))
@@ -136,12 +136,12 @@ void loop()
       delay(500);
       digitalWrite(MB_START_PIN, HIGH);
     }
-  }
+  }*/
   client.loop();             // callback()调用
   if (millis() - now > 2000) //每2s执行一次
   {
     j++;
-    digitalWrite(BOX_LED_PIN, digitalRead(MB_LED_PIN)); //电脑开机状态转到机箱LED
+    digitalWrite(BOX_LED_PIN, digitalRead(MB_LED_PIN)); //电脑开机状态转到机箱LED,可以改变接线不使用这段代码
     if (WiFi.status() != WL_CONNECTED)
       reconnectwifi();
     if (!client.connected() && WiFi.status() == WL_CONNECTED)
@@ -220,17 +220,17 @@ boolean writeBQ25(byte regAddress, byte dataVal0, byte dataVal1)
 void SetChargeCurrent(int c)
 {
   setBytes(c, 0, 8128, 0, 64);
-  writeBQ25(ChargeCurrent_ADDR, LSB, MSB); //充电电流
+  writeBQ25(ChargeCurrent_ADDR, L8b, H8b); //充电电流
 }
 void SetMaxChargeVoltage(int c)
 {
   setBytes(c, 1024, 19200, 0, 8);
-  writeBQ25(MaxChargeVoltage_ADDR, LSB, MSB);
+  writeBQ25(MaxChargeVoltage_ADDR, L8b, H8b);
 }
 void SetMinSysVoltage(int c)
 {
   setBytes(c, 1024, 16128, 0, 256);
-  writeBQ25(MinSysVolt_ADDR, 0, MSB);
+  writeBQ25(MinSysVolt_ADDR, 0, H8b);
 }
 void SetInLimtCurrent(int c)
 {
@@ -245,7 +245,7 @@ void SetInLimtCurrent(int c)
 void SetInVoltage(int c)
 {
   setBytes(c, 3200, 19584, 3200, 64);
-  writeBQ25(InputVoltage_ADDR, LSB, MSB);
+  writeBQ25(InputVoltage_ADDR, L8b, H8b);
 }
 void ADCcalc()
 {
@@ -361,8 +361,8 @@ void setBytes(uint16_t value, uint16_t minVal, uint16_t maxVal, uint16_t offset,
   value = value - offset;
   value = value / resVal;
   value = value * resVal;
-  LSB = value && 0xff;
-  MSB = value >> 8;
+  L8b = value && 0xff;
+  H8b = value >> 8;
 }
 void ChargeStatus()
 {
@@ -809,12 +809,12 @@ void callback(char *intopic, byte *payload, unsigned int length)
       delay(500);
       digitalWrite(MB_START_PIN, HIGH);
     }
-    if ((char)payload[0] == '0')
+    /*if ((char)payload[0] == '0')
     {
       digitalWrite(MB_START_PIN, LOW);
       delay(500);
       digitalWrite(MB_START_PIN, HIGH);
-    }
+    }*/
     //Serial.println( "/nas/Restart");
   }
   strcpy(topic, topic_prefix);
@@ -950,6 +950,10 @@ void ReadSetPara()
   if (mreadBQ25(MaxChargeVoltage_ADDR, dataVal, 2))
   {
     READ_PARA.MaxChargeVoltage = dataVal[1] * 256 + dataVal[0];
+    Serial.print("mcv h");
+    Serial.println( dataVal[1]);
+    Serial.print("mcv l");
+    Serial.println( dataVal[0]);
   }
   if (mreadBQ25(MinSysVolt_ADDR, dataVal, 2))
   {
