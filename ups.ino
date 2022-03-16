@@ -155,7 +155,7 @@ void loop()
       strcat(topic, "/IP");
       client.publish(topic, ups_IP);
     }
-    now = millis();
+     now = millis();
     sectohms(now / 1000); //计算开始时间
     ChargeStatus();
     ReadSetPara();
@@ -225,7 +225,7 @@ void SetChargeCurrent(int c)
 void SetMaxChargeVoltage(int c)
 {
   setBytes(c, 1024, 19200, 0, 8);
-  writeBQ25(MaxChargeVoltage_ADDR, L8b, H8b);
+   writeBQ25(MaxChargeVoltage_ADDR, L8b, H8b);
 }
 void SetMinSysVoltage(int c)
 {
@@ -361,8 +361,8 @@ void setBytes(uint16_t value, uint16_t minVal, uint16_t maxVal, uint16_t offset,
   value = value - offset;
   value = value / resVal;
   value = value * resVal;
-  L8b = value && 0xff;
-  H8b = value >> 8;
+  L8b = value %256;
+  H8b = value /256;
 }
 void ChargeStatus()
 {
@@ -787,7 +787,7 @@ void callback(char *intopic, byte *payload, unsigned int length)
     Serial.print((char)payload[i]);
   strcpy(topic, topic_prefix);
   strcat(topic, "/AutoStart");
-  if (!strcmp(intopic, topic))
+  if (!strcmp(intopic, topic)) // 是否根据电源自动控制电脑开关机
   {
     if ((char)payload[0] == '1')
     {
@@ -797,11 +797,11 @@ void callback(char *intopic, byte *payload, unsigned int length)
     {
       isAutoStart = false;
     }
-    //Serial.println("/AutoStart");
+    // Serial.println("/AutoStart");
   }
   strcpy(topic, topic_prefix);
   strcat(topic, "/nas/Restart");
-  if (!strcmp(intopic, topic))
+  if (!strcmp(intopic, topic)) //控制电脑关机或者开机
   {
     if ((char)payload[0] == '1')
     {
@@ -815,7 +815,7 @@ void callback(char *intopic, byte *payload, unsigned int length)
       delay(500);
       digitalWrite(MB_START_PIN, HIGH);
     }*/
-    //Serial.println( "/nas/Restart");
+    // Serial.println( "/nas/Restart");
   }
   strcpy(topic, topic_prefix);
   strcat(topic, "/set/InitBQ");
@@ -825,7 +825,7 @@ void callback(char *intopic, byte *payload, unsigned int length)
     {
       InitBQ25();
     }
-    //Serial.println("/set/InitBQ");
+    // Serial.println("/set/InitBQ");
   }
   strcpy(topic, topic_prefix);
   strcat(topic, "/set/ChargeI");
@@ -838,13 +838,15 @@ void callback(char *intopic, byte *payload, unsigned int length)
       if (i < length - 1)
         c *= 10;
     }
-    EEPROM.begin(epromsize);
-    EEPROM.write(1, c & 0xff);
-    EEPROM.write(2, c >> 8);
-    EEPROM.end();
-    SET_PARA.ChargeCurrent = c / 64 * 64; //最小充电电流64ma
     SetChargeCurrent(c);
-   // Serial.println("/set/ChargeI");
+    SET_PARA.ChargeCurrent = c / 64 * 64; //最小充电电流64ma
+    L8b = c % 256;
+    H8b = c / 256;
+    EEPROM.begin(epromsize);
+    EEPROM.write(1, L8b);
+    EEPROM.write(2, H8b);
+    EEPROM.end();
+    // Serial.println("/set/ChargeI");
   }
   strcpy(topic, topic_prefix);
   strcat(topic, "/set/MaxChargeV");
@@ -857,12 +859,15 @@ void callback(char *intopic, byte *payload, unsigned int length)
       if (i < length - 1)
         c *= 10;
     }
-    EEPROM.begin(epromsize);
-    EEPROM.write(3, c & 0xff);
-    EEPROM.write(4, c >> 8);
-    EEPROM.end();
+    c=c&0xfff8;
     SetMaxChargeVoltage(c); //最大充电电压
-    //Serial.println("/set/MaxChargeV");
+    L8b = c % 256;
+    H8b = c / 256;
+    EEPROM.begin(epromsize);
+    EEPROM.write(3, L8b);
+    EEPROM.write(4, H8b);
+    EEPROM.end();
+    // Serial.println("/set/MaxChargeV");
   }
   strcpy(topic, topic_prefix);
   strcat(topic, "/set/MinSysV");
@@ -876,11 +881,13 @@ void callback(char *intopic, byte *payload, unsigned int length)
         c *= 10;
     }
     SetMinSysVoltage(c);
+    L8b = c % 256;
+    H8b = c / 256;
     EEPROM.begin(epromsize);
-    EEPROM.write(5, c & 0xff);
-    EEPROM.write(6, c >> 8);
+    EEPROM.write(5, L8b);
+    EEPROM.write(6, H8b);
     EEPROM.end();
-    //Serial.println("/set/MinSysV");
+    // Serial.println("/set/MinSysV");
   }
   strcpy(topic, topic_prefix);
   strcat(topic, "/set/MinInV");
@@ -894,11 +901,13 @@ void callback(char *intopic, byte *payload, unsigned int length)
         c *= 10;
     }
     SetInVoltage(c); //输入电压设置
+    L8b = c % 256;
+    H8b = c / 256;
     EEPROM.begin(epromsize);
-    EEPROM.write(7, c & 0xff);
-    EEPROM.write(8, c >> 8);
+    EEPROM.write(7, L8b);
+    EEPROM.write(8, H8b);
     EEPROM.end();
-    //Serial.println("/set/MinInV");
+    // Serial.println("/set/MinInV");
   }
   strcpy(topic, topic_prefix);
   strcat(topic, "/set/MaxInI");
@@ -911,13 +920,15 @@ void callback(char *intopic, byte *payload, unsigned int length)
       if (i < length - 1)
         c *= 10;
     }
-    EEPROM.begin(epromsize);
-    EEPROM.write(9, c & 0xff);
-    EEPROM.write(10, c >> 8);
-    EEPROM.end();
-    SET_PARA.IIn_Limt = c;
     SetInLimtCurrent(c); //输入电流设置  0f 0111 1111 0x7F 0e 00000 0X0 最大电流6.35A
-    //Serial.println( "/set/MaxInI");
+    SET_PARA.IIn_Limt = c;
+    L8b = c % 256;
+    H8b = c / 256;
+    EEPROM.begin(epromsize);
+    EEPROM.write(9, L8b);
+    EEPROM.write(10, H8b);
+    EEPROM.end();
+    // Serial.println( "/set/MaxInI");
   }
   strcpy(topic, topic_prefix);
   strcat(topic, "/set/VBatOff");
@@ -931,11 +942,13 @@ void callback(char *intopic, byte *payload, unsigned int length)
         c *= 10;
     }
     SET_PARA.VBatOff = c;
+    L8b = c % 256;
+    H8b = c / 256;
     EEPROM.begin(epromsize);
-    EEPROM.write(11, c & 0xff);
-    EEPROM.write(12, c >> 8);
+    EEPROM.write(11, L8b);
+    EEPROM.write(12, H8b);
     EEPROM.end();
-    //Serial.println("/set/VBatOff");
+    // Serial.println("/set/VBatOff");
   }
 }
 void ReadSetPara()
@@ -950,11 +963,7 @@ void ReadSetPara()
   if (mreadBQ25(MaxChargeVoltage_ADDR, dataVal, 2))
   {
     READ_PARA.MaxChargeVoltage = dataVal[1] * 256 + dataVal[0];
-    Serial.print("mcv h");
-    Serial.println( dataVal[1]);
-    Serial.print("mcv l");
-    Serial.println( dataVal[0]);
-  }
+     }
   if (mreadBQ25(MinSysVolt_ADDR, dataVal, 2))
   {
     READ_PARA.MinSysVolt = dataVal[1] * 256;
@@ -1007,7 +1016,7 @@ void ParaPublish()
   Serial.println(READ_PARA.IIn_Limt);
   snprintf(temp, 6, "%d", READ_PARA.IIN_DPM);
   strcpy(topic, topic_prefix);
-  strcat(topic, "/para/VIDPM");
+  strcat(topic, "/para/IDPM");
   client.publish(topic, temp);
   Serial.print("setting IIN_DPM is ");
   Serial.println(READ_PARA.IIN_DPM);
@@ -1076,3 +1085,4 @@ void sectohms(int tsec)
 }
 
 // finish
+ 
