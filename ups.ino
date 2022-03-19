@@ -5,13 +5,11 @@
 #define epromsize 200     // EEPROM 字节分配
 #define BQ25713_ADDR 0x6a // 芯片IIC地址BQ25713是6b，25713b是6a
 #define CHG_OK_PIN 4      // D2 // BQ25713 charge_OK 输出
+#define SCL 2                      // D3
+#define SDA 0                      // D4
 #define MB_LED_PIN 14     // D5 // 电脑开机状态LED,接到电脑上
 #define MB_START_PIN 12   // D6 // 电脑开机引脚,接到电脑上
-#define BOX_SW_PIN 13     // D7 // 机箱开机引脚,接到机箱开关 接到VCC。开机时为重设网络参数
-#define BOX_LED_PIN 15    // D8 // 机箱开机状态LED,接到机箱led上 GND
 //#define LED_PIN 2               // D0 //板载LED
-#define SCL 0                      // D3
-#define SDA 2                      // D4
 #define ChargerStatus_ADDR 0x20    // R 充电状态
 #define IIN_DPM_ADDR 0X24          // R 实际输入电流限制值 ICO以后要重设输入电流限制
 #define ADC_ADDR 0x26              // R 0x26-0x2D  ADC测量结果
@@ -86,15 +84,13 @@ void setup()
   pinMode(CHG_OK_PIN, INPUT_PULLUP);
   pinMode(MB_LED_PIN, INPUT_PULLUP);
   pinMode(MB_START_PIN, OUTPUT);
-  pinMode(BOX_SW_PIN, INPUT_PULLUP);
-  pinMode(BOX_LED_PIN, OUTPUT);
   digitalWrite(MB_START_PIN, 1); //控制电脑启动的引脚 上电拉高
   Serial.begin(57600);           //初始化串口配置
-  Wire.begin(SCL, SDA);          // 初始化IIC 通讯 并指定引脚做通讯
+  Wire.begin(SDA, SCL);          // 初始化IIC 通讯 并指定引脚做通讯
   delay(100);
   isAutoStart = true;           //默认ups自动控制nas开关机
   ReadRomBqConf();              // 读取芯片配置，初始化芯片参数
-  if (!digitalRead(BOX_SW_PIN)) // D7 重新配置网络参数安装（机箱开机按键）
+  if (!digitalRead(MB_START_PIN)) // D7 重新配置网络参数安装（机箱开机按键）
     WriteRomNetConf(20);        //写网络参数到rom
   ReadRomNetConf(20);           //读取网络参数
   WiFi.mode(WIFI_STA);
@@ -141,7 +137,7 @@ void loop()
   if (millis() - now > 2000) //每2s执行一次
   {
     j++;
-    digitalWrite(BOX_LED_PIN, digitalRead(MB_LED_PIN)); //电脑开机状态转到机箱LED,可以改变接线不使用这段代码
+    //digitalWrite(BOX_LED_PIN, digitalRead(MB_LED_PIN)); //电脑开机状态转到机箱LED,可以改变接线不使用这段代码
     if (WiFi.status() != WL_CONNECTED)
       reconnectwifi();
     if (!client.connected() && WiFi.status() == WL_CONNECTED)
@@ -246,7 +242,7 @@ void SetInVoltage(int c)
 }
 void ADCcalc()
 {
-  // ADC.PSYS = getADC[0] * 0.4;//psys= Vsys(mV)/Rsys(R) * 10^3
+   //ADC.PSYS = getADC[0] * 0.4;//psys= Vsys(mV)/Rsys(R) * 10^3=getADC[0]*12/30*1000
   if (getADC[1])
     ADC.VBUS = getADC[1] * 64 + 3200;
   else
@@ -810,14 +806,7 @@ void callback(char *intopic, byte *payload, unsigned int length)
       delay(500);
       digitalWrite(MB_START_PIN, HIGH);
     }
-    /*if ((char)payload[0] == '0')
-    {
-      digitalWrite(MB_START_PIN, LOW);
-      delay(500);
-      digitalWrite(MB_START_PIN, HIGH);
-    }*/
-    // Serial.println( "/nas/Restart");
-  }
+   }
   strcpy(topic, topic_prefix);
   strcat(topic, "/set/InitBQ");
   if (!strcmp(intopic, topic)) //重新初始化芯片配置参数位默认值
