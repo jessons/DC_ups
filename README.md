@@ -13,6 +13,7 @@ esp8266单片机通过MQTT协议与上位机通讯，监控电压电流，并可
  D7   //机箱开机开关,开机时按下重设网络参数，引脚接到GND触发  
  D8   //机箱状态LED,接到GND   
 MQTT 通讯  
+需要在第一次初始化时设定主题的前缀  
 订阅主题（接收配置参数）  
     client.subscribe("ups/set/InitBQ");//重新初始化bq25芯片参数发送1重新初始化  
     client.subscribe("ups/set/ChargeI");//充电电流  
