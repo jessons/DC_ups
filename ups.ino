@@ -9,6 +9,8 @@
 #define SDA 0                      // D4
 #define MB_LED_PIN 14     // D5 // 电脑开机状态LED,接到电脑上
 #define MB_START_PIN 12   // D6 // 电脑开机引脚,接到电脑上
+//#define BOX_SW_PIN D7
+#define BOX_LED_PIN D8
 //#define LED_PIN 2               // D0 //板载LED
 #define ChargerStatus_ADDR 0x20    // R 充电状态
 #define IIN_DPM_ADDR 0X24          // R 实际输入电流限制值 ICO以后要重设输入电流限制
@@ -137,7 +139,7 @@ void loop()
   if (millis() - now > 2000) //每2s执行一次
   {
     j++;
-    //digitalWrite(BOX_LED_PIN, digitalRead(MB_LED_PIN)); //电脑开机状态转到机箱LED,可以改变接线不使用这段代码
+    digitalWrite(BOX_LED_PIN, digitalRead(MB_LED_PIN)); //电脑开机状态转到机箱LED,可以改变接线不使用这段代码
     if (WiFi.status() != WL_CONNECTED)
       reconnectwifi();
     if (!client.connected() && WiFi.status() == WL_CONNECTED)
@@ -733,7 +735,7 @@ void nascontrol()
           digitalWrite(MB_START_PIN, HIGH);
           strcpy(topic, topic_prefix);
           strcat(topic, "/nas");
-          client.publish(topic, "PowerOn");
+          client.publish(topic, "PowerOff");
         }
       }
     }
@@ -750,7 +752,7 @@ void nascontrol()
         digitalWrite(MB_START_PIN, HIGH);
         strcpy(topic, topic_prefix);
         strcat(topic, "/nas");
-        client.publish(topic, "PowerOff");
+        client.publish(topic, "PowerOn");
       }
     }
   }
@@ -1046,7 +1048,7 @@ void CheckPara()
 void sectohms(int tsec)
 {
   int h, m, d, s, i, j;
-  char thms[5], hms[12];
+  char thms[5], hms[16];
   d = tsec / 3600 / 24;
   tsec %= (3600 * 24);
   h = tsec / 3600;
@@ -1104,6 +1106,8 @@ void sectohms(int tsec)
   client.publish(topic, hms);
   Serial.print("uptime:");
   Serial.println(hms);
+  Serial.print("uptime (ms):");
+  Serial.println(millis());//调试用
 }
 
 // finish
